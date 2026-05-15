@@ -101,7 +101,7 @@ class SaleController extends Controller
                 'branch_id'      => $validated['branch_id'] ?? null,
                 'customer_id'    => $validated['customer_id'] ?? null,
                 'user_id'        => $request->user()->id,
-                'invoice_number' => 'INV-' . strtoupper(Str::random(8)),
+                'invoice_number' => 'INV-' . strtoupper(substr(md5($tenantId . microtime()), 0, 8) . Str::random(4)),
                 'sale_date'      => $validated['sale_date'],
                 'subtotal'       => $subtotal,
                 'discount_amount'=> $discountAmount,

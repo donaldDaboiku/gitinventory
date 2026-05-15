@@ -47,7 +47,7 @@ class PurchaseController extends Controller
             $amountPaid = $validated['amount_paid'] ?? 0;
 
             foreach ($validated['items'] as $item) {
-                $total += $item['unit_cost'] * $item['quantity_ordered'];
+                $total += $item['unit_cost'] * $item['quantity_received'];
             }
 
             $purchase = Purchase::create([
@@ -72,7 +72,7 @@ class PurchaseController extends Controller
                     'quantity_ordered'  => $item['quantity_ordered'],
                     'quantity_received' => $item['quantity_received'],
                     'unit_cost'         => $item['unit_cost'],
-                    'subtotal'          => $item['unit_cost'] * $item['quantity_ordered'],
+                    'subtotal'          => $item['unit_cost'] * $item['quantity_received'],
                 ]);
 
                 if ($item['quantity_received'] > 0) {

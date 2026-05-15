@@ -51,12 +51,12 @@ class DashboardController extends Controller
             ->value('profit');
 
         // Pending receivables
-        $pendingReceivables = Sale::where('tenant_id', $tenantId)
-            ->where('payment_status', 'partial')
-            ->orWhere(fn ($q) => $q->where('tenant_id', $tenantId)->where('payment_status', 'pending'))
+        $pendingReceivables = Sale::where('tenant_id' , $tenantId)
+            ->where(fn ($q) => $q->where('payment_status', 'partial')
+                                 ->orWhere('payment_status', 'pending'))
             ->sum('amount_due');
-
-        // Last 7 days sales chart
+                         
+            // Last 7 days sales chart
         $salesChart = Sale::where('tenant_id', $tenantId)
             ->where('status', 'completed')
             ->where('sale_date', '>=', now()->subDays(6)->toDateString())

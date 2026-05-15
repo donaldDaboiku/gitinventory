@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\Auth\RegisterController;
 use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\ProductController;
 use App\Http\Controllers\Api\StockController;
+use App\Http\Middleware\CheckSubscription;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -22,7 +23,7 @@ Route::prefix('auth')->group(function () {
 });
 
 // Protected routes (Sanctum token required)
-Route::middleware('auth:sanctum')->group(function () {
+Route::middleware(['auth:sanctum', CheckSubscription::class, 'can:products.view'])->group(function () {
 
     // Auth
     Route::post('auth/logout', LogoutController::class);
@@ -37,9 +38,11 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('dashboard', DashboardController::class);
 
     // Products
-    Route::apiResource('products', ProductController::class);
-
+     Route::apiResource('products', ProductController::class)->only(['index', 'show']);
+    // stock
+    Route::apiResource('products', ProductController::class)->only(['store']);
     // Stock movements
+    
     Route::prefix('stock')->group(function () {
         Route::post('in',        [StockController::class, 'stockIn']);
         Route::post('out',       [StockController::class, 'stockOut']);
