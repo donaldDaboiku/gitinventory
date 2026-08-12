@@ -162,6 +162,7 @@ Production: configure SMTP or Resend/Postmark via Laravel mail config.
 Emails sent today:
 
 - Welcome (registration)
+- Email verification (registration; signed link)
 - Password reset (forgot-password link)
 - Trial ending (3 and 1 days before, via scheduler)
 - Low stock digest (daily to tenant owners, via scheduler)

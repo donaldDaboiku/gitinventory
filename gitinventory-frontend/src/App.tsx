@@ -1,5 +1,6 @@
 import './App.css'
 import { AuthPage } from './components/auth/AuthPage'
+import { EmailVerificationBanner } from './components/auth/EmailVerificationBanner'
 import { SubscriptionExpiredView } from './components/billing/SubscriptionExpiredView'
 import { TrialBanner } from './components/billing/TrialBanner'
 import { DrawerForm } from './components/DrawerForm'
@@ -33,6 +34,20 @@ function App() {
         onForgotPassword={app.submitForgotPassword}
         onResetPassword={app.submitResetPassword}
       />
+    )
+  }
+
+  if (!app.emailVerified) {
+    return (
+      <>
+        <EmailVerificationBanner
+          email={app.user?.email}
+          sending={app.resendingVerification}
+          onResend={() => void app.resendVerification()}
+          onLogout={app.logout}
+        />
+        <Toast message={app.toast} />
+      </>
     )
   }
 
@@ -170,6 +185,7 @@ function App() {
               canEdit={app.can('settings.edit')}
               canManageUsers={app.can('users.create')}
               canUpgrade={app.can('settings.edit')}
+              canExportActivity={app.can('settings.view')}
               upgrading={app.upgrading}
               money={app.money}
               initialTab={app.settingsTab}
@@ -177,13 +193,14 @@ function App() {
               onInviteUser={app.inviteTeamUser}
               onUpdateUser={app.updateTeamUser}
               onUpgrade={(planId) => void app.startCheckout(planId)}
+              onExportActivity={(from, to) => void app.exportActivityLog(from, to)}
             />
           )}
         </section>
       </main>
 
       {app.drawer && (
-        <Drawer title={app.drawerTitle()} onClose={app.closeDrawer}>
+        <Drawer title={app.drawerTitle()} onClose={app.closeDrawer} wide={app.drawer === 'sales'}>
           <DrawerForm
             drawer={app.drawer}
             data={app.data}

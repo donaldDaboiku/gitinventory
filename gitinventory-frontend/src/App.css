@@ -519,6 +519,38 @@ th {
   box-shadow: -20px 0 40px rgba(15, 23, 42, 0.18);
 }
 
+.drawer-panel-pos {
+  width: min(760px, 100vw);
+}
+
+.pos-scan {
+  max-width: none;
+}
+
+.pos-scan-input {
+  min-height: 52px;
+  font-size: 1.05rem;
+}
+
+.pos-tap,
+.pos-save {
+  min-height: 48px;
+}
+
+.pos-save {
+  position: sticky;
+  bottom: 0;
+  margin-top: 8px;
+}
+
+.pos-item-line {
+  grid-template-columns: minmax(0, 1.4fr) repeat(2, minmax(96px, 130px)) 48px;
+}
+
+.pos-item-line .line-hint {
+  grid-column: 1 / -1;
+}
+
 .item-line {
   display: grid;
   grid-template-columns: minmax(0, 1.3fr) repeat(3, minmax(82px, 110px)) 40px;

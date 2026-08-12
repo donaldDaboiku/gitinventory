@@ -5,7 +5,7 @@ import { HelpPanel } from './HelpPanel'
 import type { SettingsPayload, TeamUser, BillingPlan } from '../types'
 import type { MoneyFormatter } from '../lib/format'
 
-type SettingsTab = 'profile' | 'inventory' | 'team' | 'plan' | 'help'
+type SettingsTab = 'profile' | 'inventory' | 'team' | 'plan' | 'help' | 'audit'
 
 const timezones = [
   'Africa/Lagos',
@@ -25,6 +25,7 @@ export function SettingsView({
   canEdit,
   canManageUsers,
   canUpgrade,
+  canExportActivity,
   upgrading,
   money,
   initialTab = 'profile',
@@ -32,6 +33,7 @@ export function SettingsView({
   onInviteUser,
   onUpdateUser,
   onUpgrade,
+  onExportActivity,
 }: {
   settings: SettingsPayload | null
   teamUsers: TeamUser[]
@@ -39,6 +41,7 @@ export function SettingsView({
   canEdit: boolean
   canManageUsers: boolean
   canUpgrade: boolean
+  canExportActivity: boolean
   upgrading: boolean
   money: MoneyFormatter
   initialTab?: SettingsTab
@@ -46,8 +49,11 @@ export function SettingsView({
   onInviteUser: (payload: Record<string, unknown>) => Promise<void>
   onUpdateUser: (userId: number, payload: Record<string, unknown>) => Promise<void>
   onUpgrade: (planId: string) => void
+  onExportActivity: (from?: string, to?: string) => void
 }) {
   const [tab, setTab] = useState<SettingsTab>(initialTab)
+  const [auditFrom, setAuditFrom] = useState('')
+  const [auditTo, setAuditTo] = useState('')
 
   if (!settings) {
     return <Empty text="Loading settings…" />
@@ -109,6 +115,7 @@ export function SettingsView({
               ['inventory', 'Inventory'],
               ['team', 'Team'],
               ['plan', 'Plan'],
+              ['audit', 'Audit'],
               ['help', 'Help'],
             ] as Array<[SettingsTab, string]>
           ).map(([key, label]) => (
@@ -300,6 +307,35 @@ export function SettingsView({
           )}
           {!canUpgrade && (
             <p className="tiny code-help">Only workspace owners can upgrade the subscription.</p>
+          )}
+        </section>
+      )}
+
+      {tab === 'audit' && (
+        <section className="panel">
+          <PanelTitle title="Activity log" note="Export recent workspace changes for compliance reviews" />
+          {canExportActivity ? (
+            <form
+              className="form-grid two"
+              onSubmit={(event) => {
+                event.preventDefault()
+                onExportActivity(auditFrom || undefined, auditTo || undefined)
+              }}
+            >
+              <label className="field">
+                <span>From</span>
+                <input className="input" type="date" value={auditFrom} onChange={(e) => setAuditFrom(e.target.value)} />
+              </label>
+              <label className="field">
+                <span>To</span>
+                <input className="input" type="date" value={auditTo} onChange={(e) => setAuditTo(e.target.value)} />
+              </label>
+              <button className="btn primary" type="submit">
+                Download CSV
+              </button>
+            </form>
+          ) : (
+            <p className="tiny">You do not have permission to export the activity log.</p>
           )}
         </section>
       )}

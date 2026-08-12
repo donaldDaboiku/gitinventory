@@ -21,8 +21,9 @@ Multi-tenant inventory, sales, and purchasing for small businesses. One workspac
 - **Reports** — financial summary, daily breakdown, CSV and PDF export
 - **Settings** — business profile, inventory defaults, team invites, subscription plans
 - **Billing** — 14-day trial, Paystack checkout (or demo mode without keys)
-- **Auth** — forgot-password and reset-password flows (email link opens the app)
+- **Auth** — forgot/reset password, email verification before workspace access
 - **Alerts** — daily low-stock email digests to tenant owners
+- **Audit** — CSV export of recent activity (Settings → Audit)
 - **Help** — in-app quick guide under Settings → Help
 - **Security** — tenant isolation, per-route permissions, subscription gate after trial
 
@@ -125,11 +126,10 @@ Full steps: [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)
 These are sensible follow-ups after the current release:
 
 1. **Staging environment** — Deploy a staging stack with Paystack test keys before production.
-2. **Email verification** — Confirm new accounts before full access (tables already exist).
-3. **Audit & compliance** — Export activity log for sensitive actions (Spatie Activity Log is already installed).
-4. **Mobile-friendly POS** — Larger tap targets and dedicated sale screen for tablets.
-5. **API documentation** — OpenAPI/Swagger or Postman collection for integrators.
-6. **Backups** — Automated Postgres backups and restore runbook for production.
+2. **Mobile-friendly POS polish** — Dedicated full-screen sale mode for tablets beyond the widened drawer.
+3. **API documentation** — OpenAPI/Swagger or Postman collection for integrators.
+4. **Backups** — Automated Postgres backups and restore runbook for production.
+5. **Bulk product import** — CSV upload for catalog onboarding.
 
 See [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md#recommended-next-work) for technical backlog items.
 

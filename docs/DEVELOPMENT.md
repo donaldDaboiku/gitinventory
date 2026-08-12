@@ -144,6 +144,8 @@ Notable test files:
 | `BillingTest` | Subscription gate, Paystack webhook, demo checkout |
 | `Phase4Test` | Barcode lookup, PDF exports, invoice prefix |
 | `PasswordResetTest` | Forgot/reset password API and email |
+| `EmailVerificationTest` | Verify gate, signed link, resend |
+| `ActivityLogExportTest` | Settings audit CSV export |
 | `LowStockAlertTest` | Scheduled low-stock digest command |
 | `WelcomeMailTest` | Registration email |
 
@@ -184,14 +186,13 @@ Leave `PAYSTACK_SECRET_KEY` empty. Checkout returns `demo_mode: true`; frontend 
 
 ### Product / UX
 
-- Dedicated tablet POS layout
-- Email verification flow
+- Full-screen tablet POS mode
 - Bulk product import (CSV)
 
 ### Engineering
 
 - OpenAPI spec generated from routes
-- Queue welcome and password-reset mail for faster API responses
+- Queue welcome / verification / password-reset mail for faster API responses
 - Redis cache for dashboard metrics
 - E2E tests (Playwright) for login and sale flow
 

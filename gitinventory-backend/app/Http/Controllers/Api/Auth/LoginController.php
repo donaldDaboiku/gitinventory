@@ -45,11 +45,12 @@ class LoginController extends Controller
         return response()->json([
             'message' => 'Login successful.',
             'user'    => [
-                'id'     => $user->id,
-                'name'   => $user->name,
-                'email'  => $user->email,
-                'phone'  => $user->phone,
-                'roles'  => $user->getRoleNames(),
+                'id'                => $user->id,
+                'name'              => $user->name,
+                'email'             => $user->email,
+                'email_verified_at' => $user->email_verified_at,
+                'phone'             => $user->phone,
+                'roles'             => $user->getRoleNames(),
                 'tenant' => $user->tenant ? [
                     'id'                  => $user->tenant->id,
                     'name'                => $user->tenant->name,

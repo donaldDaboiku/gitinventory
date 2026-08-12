@@ -33,6 +33,14 @@ const topics = [
     title: 'Password reset',
     body: 'On the sign-in screen, use Forgot password? Enter your email and follow the link in the message.',
   },
+  {
+    title: 'Email verification',
+    body: 'New accounts must verify email before using the workspace. Open the link in your inbox, or tap Resend on the verification screen.',
+  },
+  {
+    title: 'Audit export',
+    body: 'Owners can download a CSV of recent activity under Settings → Audit.',
+  },
 ]
 
 export function HelpPanel() {

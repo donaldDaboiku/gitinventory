@@ -1,10 +1,13 @@
 <?php
 
+use App\Http\Controllers\Api\ActivityLogController;
 use App\Http\Controllers\Api\Auth\ForgotPasswordController;
 use App\Http\Controllers\Api\Auth\LoginController;
 use App\Http\Controllers\Api\Auth\LogoutController;
 use App\Http\Controllers\Api\Auth\RegisterController;
+use App\Http\Controllers\Api\Auth\ResendVerificationController;
 use App\Http\Controllers\Api\Auth\ResetPasswordController;
+use App\Http\Controllers\Api\Auth\VerifyEmailController;
 use App\Http\Controllers\Api\BillingController;
 use App\Http\Controllers\Api\BranchController;
 use App\Http\Controllers\Api\CategoryController;
@@ -18,6 +21,7 @@ use App\Http\Controllers\Api\SettingsController;
 use App\Http\Controllers\Api\StockController;
 use App\Http\Controllers\Api\SupplierController;
 use App\Http\Controllers\Api\TeamUserController;
+use App\Http\Middleware\CheckEmailVerified;
 use App\Http\Middleware\CheckSubscription;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -38,7 +42,11 @@ Route::prefix('auth')->middleware('throttle:10,1')->group(function () {
 
 Route::post('billing/webhook', [BillingController::class, 'webhook']);
 
-// Authenticated routes that must work even when subscription expired
+Route::get('auth/email/verify/{id}/{hash}', VerifyEmailController::class)
+    ->middleware(['signed', 'throttle:6,1'])
+    ->name('verification.verify');
+
+// Authenticated routes that must work even when subscription expired / email unverified
 Route::middleware(['auth:sanctum'])->group(function () {
     Route::post('auth/logout', LogoutController::class);
     Route::get('auth/me', fn (Request $req) => response()->json([
@@ -47,6 +55,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
             'permissions' => $req->user()->getAllPermissions()->pluck('name'),
         ]),
     ]));
+    Route::post('auth/email/resend', ResendVerificationController::class)->middleware('throttle:6,1');
 
     Route::prefix('billing')->group(function () {
         Route::get('plans', [BillingController::class, 'plans']);
@@ -58,8 +67,8 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::get('settings', [SettingsController::class, 'show'])->middleware('can:settings.view');
 });
 
-// Protected routes (active trial or subscription required)
-Route::middleware(['auth:sanctum', CheckSubscription::class])->group(function () {
+// Protected routes (verified email + active trial or subscription required)
+Route::middleware(['auth:sanctum', CheckEmailVerified::class, CheckSubscription::class])->group(function () {
     // Dashboard
     Route::get('dashboard', DashboardController::class)->middleware('can:reports.view');
 
@@ -73,6 +82,7 @@ Route::middleware(['auth:sanctum', CheckSubscription::class])->group(function ()
     // Settings & team
     Route::prefix('settings')->group(function () {
         Route::put('/', [SettingsController::class, 'update'])->middleware('can:settings.edit');
+        Route::get('activity/export', [ActivityLogController::class, 'export'])->middleware('can:settings.view');
         Route::get('users', [TeamUserController::class, 'index'])->middleware('can:users.view');
         Route::post('users', [TeamUserController::class, 'store'])->middleware('can:users.create');
         Route::put('users/{teamMember}', [TeamUserController::class, 'update'])->middleware('can:users.edit');

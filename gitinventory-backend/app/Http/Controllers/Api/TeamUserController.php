@@ -35,12 +35,13 @@ class TeamUserController extends Controller
         ]);
 
         $user = User::create([
-            'tenant_id' => $tenantId,
-            'name'      => $validated['name'],
-            'email'     => $validated['email'],
-            'phone'     => $validated['phone'] ?? null,
-            'password'  => Hash::make($validated['password']),
-            'is_active' => true,
+            'tenant_id'         => $tenantId,
+            'name'              => $validated['name'],
+            'email'             => $validated['email'],
+            'phone'             => $validated['phone'] ?? null,
+            'password'          => Hash::make($validated['password']),
+            'is_active'         => true,
+            'email_verified_at' => now(), // ponytail: owner-invited emails are trusted
         ]);
 
         $user->assignRole($validated['role']);

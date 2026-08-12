@@ -61,8 +61,8 @@ export function SaleDrawerForm({
   }
 
   return (
-    <form className="form-grid" onSubmit={onSubmit}>
-      <section className="panel compact scan-panel">
+    <form className="form-grid pos-sale-form" onSubmit={onSubmit}>
+      <section className="panel compact scan-panel pos-scan">
         <div className="panel-header">
           <h3>Scan barcode</h3>
           <span className="tiny">USB scanner or type code + Enter</span>
@@ -70,13 +70,14 @@ export function SaleDrawerForm({
         <form className="toolbar-left scan-form" onSubmit={handleScan}>
           <input
             ref={scanRef}
-            className="input search"
+            className="input search pos-scan-input"
             placeholder="Scan barcode or SKU"
             value={scanCode}
             onChange={(event) => setScanCode(event.target.value)}
             autoComplete="off"
+            autoFocus
           />
-          <button className="btn ghost" type="submit" disabled={scanning || !scanCode.trim()}>
+          <button className="btn primary pos-tap" type="submit" disabled={scanning || !scanCode.trim()}>
             {scanning ? 'Looking up…' : 'Add item'}
           </button>
         </form>
@@ -112,7 +113,7 @@ export function SaleDrawerForm({
       <div className="panel inner-panel">
         <div className="panel-header">
           <h3>Items</h3>
-          <button className="btn ghost" type="button" onClick={() => setSaleLines([...saleLines, Date.now()])}>
+          <button className="btn ghost pos-tap" type="button" onClick={() => setSaleLines([...saleLines, Date.now()])}>
             Add line
           </button>
         </div>
@@ -120,7 +121,7 @@ export function SaleDrawerForm({
           {saleLines.map((line) => {
             const preset = linePresets[line]
             return (
-              <div className="item-line" data-line key={line}>
+              <div className="item-line pos-item-line" data-line key={line}>
                 {preset && <span className="tiny line-hint">{preset.name}</span>}
                 <SelectField label="Product" name="product_id" required defaultValue={preset?.productId ?? ''}>
                   <Options rows={data.products} placeholder="Select product" />
@@ -143,7 +144,7 @@ export function SaleDrawerForm({
                   required
                 />
                 <button
-                  className="btn ghost line-remove"
+                  className="btn ghost line-remove pos-tap"
                   type="button"
                   onClick={() => saleLines.length > 1 && setSaleLines(saleLines.filter((item) => item !== line))}
                 >
@@ -155,7 +156,7 @@ export function SaleDrawerForm({
         </div>
       </div>
       <Textarea label="Notes" name="notes" />
-      <button className="btn primary">Save sale</button>
+      <button className="btn primary pos-save">Save sale</button>
     </form>
   )
 }

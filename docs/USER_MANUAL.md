@@ -45,7 +45,7 @@ If you do not receive an email, check spam or ask your administrator to confirm 
 2. Fill in **business name**, **your name**, **email**, **phone** (optional), and **password**.
 3. Click **Start trial**.
 
-A **14-day free trial** begins immediately. You receive a welcome email (when mail is configured on the server). A default **Main Branch** is created for your business.
+A **14-day free trial** begins immediately. You receive a welcome email and a **verification email** (when mail is configured). Confirm your email before using inventory, sales, and reports. A default **Main Branch** is created for your business.
 
 ### Sign out
 

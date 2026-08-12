@@ -36,10 +36,11 @@ class DemoUserSeeder extends Seeder
         ]);
 
         $user = User::create([
-            'tenant_id' => $tenant->id,
-            'name'      => 'Demo Owner',
-            'email'     => 'demo@gitinventory.test',
-            'password'  => Hash::make('Password1'),
+            'tenant_id'         => $tenant->id,
+            'name'              => 'Demo Owner',
+            'email'             => 'demo@gitinventory.test',
+            'password'          => Hash::make('Password1'),
+            'email_verified_at' => now(),
         ]);
 
         $user->assignRole('owner');

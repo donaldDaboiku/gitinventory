@@ -65,16 +65,18 @@ class RegisterController extends Controller
             DB::commit();
 
             Mail::to($user->email)->send(new WelcomeMail($user, $tenant));
+            $user->sendEmailVerificationNotification();
 
             $token = $user->createToken('auth-token', ['*'], now()->addDays(30))->plainTextToken;
 
             return response()->json([
-                'message' => 'Registration successful. Your 14-day trial has started.',
+                'message' => 'Registration successful. Your 14-day trial has started. Please verify your email.',
                 'user'    => [
-                    'id'     => $user->id,
-                    'name'   => $user->name,
-                    'email'  => $user->email,
-                    'role'   => 'owner',
+                    'id'                => $user->id,
+                    'name'              => $user->name,
+                    'email'             => $user->email,
+                    'email_verified_at' => $user->email_verified_at,
+                    'role'              => 'owner',
                     'tenant' => [
                         'id'            => $tenant->id,
                         'name'          => $tenant->name,

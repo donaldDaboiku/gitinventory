@@ -71,7 +71,10 @@ export function useInventoryApp() {
   const [subscriptionExpired, setSubscriptionExpired] = useState(false)
   const [billingPlans, setBillingPlans] = useState<BillingPlan[]>([])
   const [upgrading, setUpgrading] = useState(false)
-  const [settingsTab, setSettingsTab] = useState<'profile' | 'inventory' | 'team' | 'plan'>('profile')
+  const [resendingVerification, setResendingVerification] = useState(false)
+  const [settingsTab, setSettingsTab] = useState<
+    'profile' | 'inventory' | 'team' | 'plan' | 'help' | 'audit'
+  >('profile')
   const [data, setData] = useState<AppData>({
     dashboard: null,
     financialReport: null,
@@ -323,14 +326,16 @@ export function useInventoryApp() {
     return Math.max(0, diff)
   }, [user?.tenant?.trial_ends_at, user?.tenant?.has_active_subscription])
 
+  const emailVerified = Boolean(user?.email_verified_at)
+
   const loadBillingPlans = useCallback(async () => {
     const response = await api<{ plans: BillingPlan[] }>('billing/plans')
     setBillingPlans(response.plans)
   }, [api])
 
-  const refreshUser = useCallback(async () => {
+  const refreshUser = useCallback(async (): Promise<User | null> => {
     const activeToken = localStorage.getItem('gitinventory_token')
-    if (!activeToken) return
+    if (!activeToken) return null
     try {
       const response = await fetch('/api/auth/me', {
         headers: {
@@ -350,10 +355,12 @@ export function useInventoryApp() {
         if (active || tenant?.has_active_subscription) {
           setSubscriptionExpired(false)
         }
+        return body.user as User
       }
     } catch {
       // login flow sets user directly
     }
+    return null
   }, [])
 
   useEffect(() => {
@@ -364,6 +371,16 @@ export function useInventoryApp() {
       setResetEmail(params.get('email') ?? '')
       window.history.replaceState({}, '', window.location.pathname)
     }
+
+    if (params.get('verified') === '1') {
+      notify('Email verified. Welcome aboard.')
+      window.history.replaceState({}, '', window.location.pathname)
+      if (token) void refreshUser()
+    } else if (params.get('verified') === '0') {
+      notify('Verification link is invalid or expired.')
+      window.history.replaceState({}, '', window.location.pathname)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   useEffect(() => {
@@ -397,9 +414,12 @@ export function useInventoryApp() {
     }
 
     const timer = window.setTimeout(() => {
-      void refreshUser()
-      void loadBillingPlans().catch(() => undefined)
-      void loadPage('dashboard')
+      void refreshUser().then((fresh) => {
+        void loadBillingPlans().catch(() => undefined)
+        if (fresh?.email_verified_at) {
+          void loadPage('dashboard')
+        }
+      })
     }, 0)
 
     return () => window.clearTimeout(timer)
@@ -693,6 +713,37 @@ export function useInventoryApp() {
     }
   }
 
+  const resendVerification = async () => {
+    setResendingVerification(true)
+    try {
+      const response = await api<{ message?: string }>('auth/email/resend', { method: 'POST' })
+      notify(response.message || 'Verification email sent.')
+    } catch (error) {
+      notify(error instanceof Error ? error.message : 'Could not resend verification email.')
+    } finally {
+      setResendingVerification(false)
+    }
+  }
+
+  const exportActivityLog = async (from?: string, to?: string) => {
+    if (!token) return
+    try {
+      const query = new URLSearchParams()
+      if (from) query.set('from', from)
+      if (to) query.set('to', to)
+      const suffix = query.toString() ? `?${query.toString()}` : ''
+      await downloadWithToken(
+        `settings/activity/export${suffix}`,
+        `activity-log-${new Date().toISOString().slice(0, 10)}.csv`,
+        token,
+        'text/csv',
+      )
+      notify('Activity log downloaded.')
+    } catch (error) {
+      notify(error instanceof Error ? error.message : 'Activity export failed.')
+    }
+  }
+
   const openPlanSettings = () => {
     setSettingsTab('plan')
     setPage('settings')
@@ -806,6 +857,8 @@ export function useInventoryApp() {
     labelProduct,
     setLabelProduct,
     subscriptionExpired,
+    emailVerified,
+    resendingVerification,
     billingPlans,
     upgrading,
     settingsTab,
@@ -834,6 +887,8 @@ export function useInventoryApp() {
     downloadSalePdf,
     downloadProductLabelPdf,
     startCheckout,
+    resendVerification,
+    exportActivityLog,
     openPlanSettings,
     submitDrawer,
     openTransactionDetail,
