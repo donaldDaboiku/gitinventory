@@ -1,100 +1,97 @@
 # GITInventory Backend
 
-Laravel API backend for a multi-tenant inventory and sales management system.
+Laravel 13 API for multi-tenant inventory, sales, purchasing, reports, PDF exports, and Paystack billing.
 
-## Current Scope
+**Project docs:** see the [root README](../README.md) and [docs/](../docs/).
 
-- Tenant registration with a default main branch and owner user.
-- Sanctum token login/logout and current-user endpoint.
-- Products, categories, branches, customers, and suppliers.
-- Stock in, stock out, manual adjustment, and movement history.
-- Sales with stock deduction and payment status calculation.
-- Purchases with stock receiving and cost-price updates.
-- Dashboard metrics for products, low stock, revenue, profit, receivables, and top products.
+## Features
+
+- Sanctum API authentication (register, login, logout, me)
+- Tenant-scoped products, categories, branches, customers, suppliers
+- Stock in / out / adjust with movement history
+- Sales with stock deduction, tenant invoice prefix, default tax rate
+- Purchases with receiving and cost updates
+- Dashboard KPIs and financial reports (JSON, CSV, PDF)
+- Product barcode/SKU auto-generation and POS lookup
+- Sale receipts and product label PDFs (DomPDF)
+- Settings, team users, roles (Spatie Permission)
+- Trial + subscription gate (`CheckSubscription` middleware)
+- Paystack billing checkout and webhook
+- Welcome and trial-ending emails
 
 ## Requirements
 
-- PHP 8.3 or newer
+- PHP 8.3+
 - Composer
-- PostgreSQL
-- Node.js and npm
-
-This machine currently has Composer available, but `php` is not available in the terminal PATH. Laravel commands will fail until PHP is installed or added to PATH.
+- PostgreSQL (recommended) or SQLite (tests)
 
 ## Setup
 
-```bash
+```powershell
 composer install
 copy .env.example .env
 php artisan key:generate
 php artisan migrate
 php artisan db:seed
-npm install
 ```
 
-The local `.env` is currently configured for PostgreSQL:
+Demo user:
 
-```ini
-DB_CONNECTION=pgsql
-DB_HOST=127.0.0.1
-DB_PORT=5432
-DB_DATABASE=gitinventory
-DB_USERNAME=postgres
+```powershell
+php artisan db:seed --class=DemoUserSeeder
 ```
 
-Update `DB_PASSWORD` locally as needed.
+## Run
 
-## Run Locally
-
-```bash
+```powershell
 php artisan serve
-npm run dev
 ```
 
-Useful checks:
+With queue and scheduler (production):
 
-```bash
-php artisan route:list
+```powershell
+php artisan queue:work
+php artisan schedule:work
+```
+
+## Tests
+
+```powershell
 php artisan test
 ```
 
-## API Overview
+## API routes (summary)
 
-Public:
+**Public**
 
-- `POST /api/auth/register`
-- `POST /api/auth/login`
+- `POST /api/auth/register`, `POST /api/auth/login`
+- `POST /api/billing/webhook`
 
-Authenticated with Sanctum bearer token:
+**Authenticated (subscription not required)**
 
-- `POST /api/auth/logout`
-- `GET /api/auth/me`
-- `GET /api/dashboard`
-- `apiResource /api/products`
-- `apiResource /api/categories`
-- `apiResource /api/customers`
-- `apiResource /api/suppliers`
-- `apiResource /api/branches`
-- `GET /api/stock/movements`
-- `POST /api/stock/in`
-- `POST /api/stock/out`
-- `POST /api/stock/adjust`
-- `GET|POST|GET by id /api/sales`
-- `GET|POST|GET by id /api/purchases`
+- `POST /api/auth/logout`, `GET /api/auth/me`
+- `GET /api/billing/plans`, `GET /api/billing/status`
+- `POST /api/billing/checkout`, `POST /api/billing/confirm-demo`
+- `GET /api/settings`
 
-## Development Notes
+**Authenticated + active trial/subscription**
 
-- Most business tables are tenant scoped with `tenant_id`.
-- Feature tests in `tests/Feature/TenantIsolationTest.php` cover cross-tenant isolation for product search, product creation, sales, and purchases.
-- Seed roles and permissions before testing registration flows that assign the `owner` role:
+- Dashboard, products, stock, sales, purchases, customers, suppliers, branches
+- Reports, settings update, team users
+- `GET /api/products/lookup`, PDF exports
 
-```bash
-php artisan db:seed --class=RolesAndPermissionsSeeder
-```
+Full list: `php artisan route:list --path=api`
 
-## Recommended Next Work
+## Configuration
 
-1. Install or expose PHP in PATH, then run `php artisan test`.
-2. Fix any runtime/test failures after the local PHP/PostgreSQL setup is confirmed.
-3. Add frontend screens for login/register, dashboard, products, stock, sales, purchases, customers, suppliers, and branches.
-4. Add API docs or a Postman/Insomnia collection for manual testing.
+| File | Purpose |
+|------|---------|
+| `config/billing.php` | Plan prices, callback URL |
+| `config/services.php` | Paystack keys |
+| `.env` | Database, mail, `FRONTEND_URL`, `BILLING_CALLBACK_URL` |
+
+## Local guides
+
+- [HERD_SETUP.md](HERD_SETUP.md) — Laravel Herd on macOS
+- [../docs/DEVELOPMENT.md](../docs/DEVELOPMENT.md) — developer guide
+- [../docs/DEPLOYMENT.md](../docs/DEPLOYMENT.md) — Docker and production

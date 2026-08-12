@@ -23,8 +23,11 @@ class CheckSubscription
         }
 
         // Check if subscription is active
-        if (!$user->tenant->isOnTrial() && !$user->tenant->hasActiveSubscription()) {
-            return response()->json(['message' => 'Subscription expired.'], 402);
+        if (! $user->tenant->isOnTrial() && ! $user->tenant->hasActiveSubscription()) {
+            return response()->json([
+                'message' => 'Subscription expired.',
+                'code' => 'subscription_expired',
+            ], 402);
         }
 
         return $next($request);

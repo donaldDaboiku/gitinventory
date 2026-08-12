@@ -8,8 +8,10 @@ use App\Models\Tenant;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use App\Mail\WelcomeMail;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rules\Password;
 
@@ -61,6 +63,8 @@ class RegisterController extends Controller
             $user->assignRole('owner');
 
             DB::commit();
+
+            Mail::to($user->email)->send(new WelcomeMail($user, $tenant));
 
             $token = $user->createToken('auth-token', ['*'], now()->addDays(30))->plainTextToken;
 

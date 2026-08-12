@@ -72,4 +72,25 @@ class Tenant extends Model
     {
         return $this->subscription_expires_at && $this->subscription_expires_at->isFuture();
     }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function defaultSettings(): array
+    {
+        return [
+            'default_min_stock_level' => 5,
+            'default_tax_rate'        => 0,
+            'invoice_prefix'          => 'INV',
+            'allow_negative_stock'    => false,
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function mergedSettings(): array
+    {
+        return array_merge($this->defaultSettings(), $this->settings ?? []);
+    }
 }

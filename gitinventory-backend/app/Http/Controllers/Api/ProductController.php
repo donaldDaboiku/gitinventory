@@ -4,13 +4,29 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Product;
+use App\Services\BarcodeImageService;
+use App\Services\ProductIdentifierService;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
+use Symfony\Component\HttpFoundation\Response;
 
 class ProductController extends Controller
 {
+    public function __construct(
+        private ProductIdentifierService $identifiers,
+        private BarcodeImageService $barcodes,
+    ) {}
+
+    public function previewCodes(Request $request): JsonResponse
+    {
+        return response()->json(
+            $this->identifiers->preview($request->user()->tenant_id)
+        );
+    }
+
     public function index(Request $request): JsonResponse
     {
         $tenantId = $request->user()->tenant_id;
@@ -34,6 +50,36 @@ class ProductController extends Controller
         return response()->json($products);
     }
 
+    public function lookup(Request $request): JsonResponse
+    {
+        $code = trim($request->validate(['code' => ['required', 'string', 'max:100']])['code']);
+        $tenantId = $request->user()->tenant_id;
+
+        $product = Product::where('tenant_id', $tenantId)
+            ->where('is_active', true)
+            ->where(function ($query) use ($code) {
+                $query->where('barcode', $code)->orWhere('sku', $code);
+            })
+            ->first();
+
+        if (! $product) {
+            return response()->json(['message' => 'Product not found for this code.'], 404);
+        }
+
+        return response()->json([
+            'product' => [
+                'id'            => $product->id,
+                'name'          => $product->name,
+                'sku'           => $product->sku,
+                'barcode'       => $product->barcode,
+                'selling_price' => $product->selling_price,
+                'quantity'      => $product->quantity,
+                'tax_rate'      => $product->tax_rate,
+                'unit'          => $product->unit,
+            ],
+        ]);
+    }
+
     public function store(Request $request): JsonResponse
     {
         $tenantId = $request->user()->tenant_id;
@@ -42,8 +88,8 @@ class ProductController extends Controller
             'name'            => ['required', 'string', 'max:255'],
             'category_id'     => ['nullable', Rule::exists('categories', 'id')->where('tenant_id', $tenantId)],
             'branch_id'       => ['nullable', Rule::exists('branches', 'id')->where('tenant_id', $tenantId)],
-            'sku'             => ['nullable', 'string', 'max:100'],
-            'barcode'         => ['nullable', 'string', 'max:100'],
+            'sku'             => ['nullable', 'string', 'max:100', Rule::unique('products', 'sku')->where('tenant_id', $tenantId)],
+            'barcode'         => ['nullable', 'string', 'max:100', Rule::unique('products', 'barcode')->where('tenant_id', $tenantId)],
             'unit'            => ['required', 'string', 'in:piece,kg,litre,box,pack,dozen,carton'],
             'cost_price'      => ['required', 'numeric', 'min:0'],
             'selling_price'   => ['required', 'numeric', 'min:0'],
@@ -55,9 +101,14 @@ class ProductController extends Controller
             'track_stock'     => ['boolean'],
         ]);
 
+        $validated = $this->identifiers->ensureIdentifiers($validated, $tenantId);
+        $settings = $request->user()->tenant?->mergedSettings() ?? [];
+
         $product = Product::create([
             ...$validated,
-            'tenant_id' => $tenantId,
+            'tenant_id'       => $tenantId,
+            'min_stock_level' => $validated['min_stock_level'] ?? ($settings['default_min_stock_level'] ?? 0),
+            'tax_rate'        => $validated['tax_rate'] ?? ($settings['default_tax_rate'] ?? 0),
         ]);
 
         // Log initial stock movement if quantity > 0
@@ -85,22 +136,19 @@ class ProductController extends Controller
 
     public function show(Request $request, Product $product): JsonResponse
     {
-        $this->authorizeProduct($request, $product);
-
         return response()->json($product->load(['category', 'branch', 'stockMovements' => fn ($q) => $q->latest()->limit(20)]));
     }
 
     public function update(Request $request, Product $product): JsonResponse
     {
-        $this->authorizeProduct($request, $product);
         $tenantId = $request->user()->tenant_id;
 
         $validated = $request->validate([
             'name'            => ['sometimes', 'string', 'max:255'],
             'category_id'     => ['nullable', Rule::exists('categories', 'id')->where('tenant_id', $tenantId)],
             'branch_id'       => ['nullable', Rule::exists('branches', 'id')->where('tenant_id', $tenantId)],
-            'sku'             => ['nullable', 'string', 'max:100'],
-            'barcode'         => ['nullable', 'string', 'max:100'],
+            'sku'             => ['nullable', 'string', 'max:100', Rule::unique('products', 'sku')->where('tenant_id', $tenantId)->ignore($product->id)],
+            'barcode'         => ['nullable', 'string', 'max:100', Rule::unique('products', 'barcode')->where('tenant_id', $tenantId)->ignore($product->id)],
             'unit'            => ['sometimes', 'string'],
             'cost_price'      => ['sometimes', 'numeric', 'min:0'],
             'selling_price'   => ['sometimes', 'numeric', 'min:0'],
@@ -121,13 +169,25 @@ class ProductController extends Controller
 
     public function destroy(Request $request, Product $product): JsonResponse
     {
-        $this->authorizeProduct($request, $product);
         $product->delete();
+
         return response()->json(['message' => 'Product deleted successfully.']);
     }
 
-    private function authorizeProduct(Request $request, Product $product): void
+    public function label(Request $request, Product $product): Response
     {
-        abort_if($product->tenant_id !== $request->user()->tenant_id, 403, 'Access denied.');
+        abort_if($product->tenant_id !== $request->user()->tenant_id, 403);
+
+        $tenant = $request->user()->tenant;
+        abort_unless($tenant, 404, 'Tenant not found.');
+
+        $code = $product->barcode ?: $product->sku;
+        $barcodeSvg = $code ? $this->barcodes->svg($code) : '';
+
+        $filename = 'label-'.preg_replace('/[^A-Za-z0-9\-_]/', '-', (string) $product->id).'.pdf';
+
+        return Pdf::loadView('pdf.product-label', compact('product', 'tenant', 'barcodeSvg'))
+            ->setPaper([0, 0, 226.77, 113.39])
+            ->download($filename);
     }
 }

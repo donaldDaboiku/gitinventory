@@ -19,7 +19,11 @@ class PurchaseController extends Controller
         return response()->json(
             Purchase::where('tenant_id', $request->user()->tenant_id)
                 ->with(['supplier', 'user'])
-                ->latest()->paginate(20)
+                ->when($request->date_from, fn ($q) => $q->where('purchase_date', '>=', $request->date_from))
+                ->when($request->date_to, fn ($q) => $q->where('purchase_date', '<=', $request->date_to))
+                ->when($request->payment_status, fn ($q) => $q->where('payment_status', $request->payment_status))
+                ->latest()
+                ->paginate($request->per_page ?? 20)
         );
     }
 

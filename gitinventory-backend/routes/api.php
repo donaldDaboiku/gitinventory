@@ -3,9 +3,19 @@
 use App\Http\Controllers\Api\Auth\LoginController;
 use App\Http\Controllers\Api\Auth\LogoutController;
 use App\Http\Controllers\Api\Auth\RegisterController;
+use App\Http\Controllers\Api\BillingController;
+use App\Http\Controllers\Api\BranchController;
+use App\Http\Controllers\Api\CategoryController;
+use App\Http\Controllers\Api\CustomerController;
 use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\ProductController;
+use App\Http\Controllers\Api\PurchaseController;
+use App\Http\Controllers\Api\ReportController;
+use App\Http\Controllers\Api\SaleController;
+use App\Http\Controllers\Api\SettingsController;
 use App\Http\Controllers\Api\StockController;
+use App\Http\Controllers\Api\SupplierController;
+use App\Http\Controllers\Api\TeamUserController;
 use App\Http\Middleware\CheckSubscription;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -16,16 +26,16 @@ use Illuminate\Support\Facades\Route;
 |--------------------------------------------------------------------------
 */
 
-// Public routes
-Route::prefix('auth')->group(function () {
+// Public routes (rate-limited)
+Route::prefix('auth')->middleware('throttle:10,1')->group(function () {
     Route::post('register', RegisterController::class);
-    Route::post('login',    LoginController::class);
+    Route::post('login', LoginController::class);
 });
 
-// Protected routes (Sanctum token required)
-Route::middleware(['auth:sanctum', CheckSubscription::class, 'can:products.view'])->group(function () {
+Route::post('billing/webhook', [BillingController::class, 'webhook']);
 
-    // Auth
+// Authenticated routes that must work even when subscription expired
+Route::middleware(['auth:sanctum'])->group(function () {
     Route::post('auth/logout', LogoutController::class);
     Route::get('auth/me', fn (Request $req) => response()->json([
         'user' => array_merge($req->user()->load('tenant')->toArray(), [
@@ -34,37 +44,104 @@ Route::middleware(['auth:sanctum', CheckSubscription::class, 'can:products.view'
         ]),
     ]));
 
-    // Dashboard
-    Route::get('dashboard', DashboardController::class);
-
-    // Products
-     Route::apiResource('products', ProductController::class)->only(['index', 'show']);
-    // stock
-    Route::apiResource('products', ProductController::class)->only(['store']);
-    // Stock movements
-    
-    Route::prefix('stock')->group(function () {
-        Route::post('in',        [StockController::class, 'stockIn']);
-        Route::post('out',       [StockController::class, 'stockOut']);
-        Route::post('adjust',    [StockController::class, 'adjust']);
-        Route::get('movements',  [StockController::class, 'movements']);
+    Route::prefix('billing')->group(function () {
+        Route::get('plans', [BillingController::class, 'plans']);
+        Route::get('status', [BillingController::class, 'status']);
+        Route::post('checkout', [BillingController::class, 'checkout'])->middleware('can:settings.edit');
+        Route::post('confirm-demo', [BillingController::class, 'confirmDemo'])->middleware('can:settings.edit');
     });
 
-    // Categories
-    Route::apiResource('categories', \App\Http\Controllers\Api\CategoryController::class);
+    Route::get('settings', [SettingsController::class, 'show'])->middleware('can:settings.view');
+});
+
+// Protected routes (active trial or subscription required)
+Route::middleware(['auth:sanctum', CheckSubscription::class])->group(function () {
+    // Dashboard
+    Route::get('dashboard', DashboardController::class)->middleware('can:reports.view');
+
+    // Financial reports
+    Route::prefix('reports')->group(function () {
+        Route::get('financial', [ReportController::class, 'financial'])->middleware('can:reports.view');
+        Route::get('financial/export', [ReportController::class, 'exportFinancial'])->middleware('can:reports.export');
+        Route::get('financial/export/pdf', [ReportController::class, 'exportFinancialPdf'])->middleware('can:reports.export');
+    });
+
+    // Settings & team
+    Route::prefix('settings')->group(function () {
+        Route::put('/', [SettingsController::class, 'update'])->middleware('can:settings.edit');
+        Route::get('users', [TeamUserController::class, 'index'])->middleware('can:users.view');
+        Route::post('users', [TeamUserController::class, 'store'])->middleware('can:users.create');
+        Route::put('users/{teamMember}', [TeamUserController::class, 'update'])->middleware('can:users.edit');
+    });
+
+    // Products
+    Route::get('products/codes/preview', [ProductController::class, 'previewCodes'])->middleware('can:products.create');
+    Route::get('products/lookup', [ProductController::class, 'lookup'])->middleware('can:sales.create');
+    Route::get('products/{product}/label', [ProductController::class, 'label'])->middleware('can:products.view');
+    Route::apiResource('products', ProductController::class)->middleware([
+        'index'   => 'can:products.view',
+        'show'    => 'can:products.view',
+        'store'   => 'can:products.create',
+        'update'  => 'can:products.edit',
+        'destroy' => 'can:products.delete',
+    ]);
+
+    // Stock movements
+    Route::prefix('stock')->group(function () {
+        Route::get('movements', [StockController::class, 'movements'])->middleware('can:stock.view');
+        Route::post('in', [StockController::class, 'stockIn'])->middleware('can:stock.in');
+        Route::post('out', [StockController::class, 'stockOut'])->middleware('can:stock.out');
+        Route::post('adjust', [StockController::class, 'adjust'])->middleware('can:stock.adjust');
+    });
+
+    // Categories (catalog permissions)
+    Route::apiResource('categories', CategoryController::class)->middleware([
+        'index'   => 'can:products.view',
+        'show'    => 'can:products.view',
+        'store'   => 'can:products.create',
+        'update'  => 'can:products.edit',
+        'destroy' => 'can:products.delete',
+    ]);
 
     // Customers
-    Route::apiResource('customers', \App\Http\Controllers\Api\CustomerController::class);
+    Route::apiResource('customers', CustomerController::class)->middleware([
+        'index'   => 'can:customers.view',
+        'show'    => 'can:customers.view',
+        'store'   => 'can:customers.create',
+        'update'  => 'can:customers.edit',
+        'destroy' => 'can:customers.delete',
+    ]);
 
     // Suppliers
-    Route::apiResource('suppliers', \App\Http\Controllers\Api\SupplierController::class);
+    Route::apiResource('suppliers', SupplierController::class)->middleware([
+        'index'   => 'can:suppliers.view',
+        'show'    => 'can:suppliers.view',
+        'store'   => 'can:suppliers.create',
+        'update'  => 'can:suppliers.edit',
+        'destroy' => 'can:suppliers.delete',
+    ]);
 
     // Sales
-    Route::apiResource('sales', \App\Http\Controllers\Api\SaleController::class)->only(['index', 'store', 'show']);
+    Route::get('sales/{sale}/pdf', [SaleController::class, 'pdf'])->middleware('can:sales.view');
+    Route::apiResource('sales', SaleController::class)->only(['index', 'store', 'show'])->middleware([
+        'index' => 'can:sales.view',
+        'show'  => 'can:sales.view',
+        'store' => 'can:sales.create',
+    ]);
 
     // Purchases
-    Route::apiResource('purchases', \App\Http\Controllers\Api\PurchaseController::class)->only(['index', 'store', 'show']);
+    Route::apiResource('purchases', PurchaseController::class)->only(['index', 'store', 'show'])->middleware([
+        'index' => 'can:purchases.view',
+        'show'  => 'can:purchases.view',
+        'store' => 'can:purchases.create',
+    ]);
 
-    // Branches (owner/manager only)
-    Route::apiResource('branches', \App\Http\Controllers\Api\BranchController::class);
+    // Branches
+    Route::apiResource('branches', BranchController::class)->middleware([
+        'index'   => 'can:branches.view',
+        'show'    => 'can:branches.view',
+        'store'   => 'can:branches.create',
+        'update'  => 'can:branches.edit',
+        'destroy' => 'can:branches.delete',
+    ]);
 });

@@ -1,0 +1,110 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: gitinventory
+      POSTGRES_USER: gitinventory
+      POSTGRES_PASSWORD: gitinventory
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U gitinventory']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+
+  backend:
+    build: ./gitinventory-backend
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      APP_NAME: GITInventory
+      APP_ENV: production
+      APP_KEY: ${APP_KEY}
+      APP_DEBUG: 'false'
+      APP_URL: ${APP_URL:-http://localhost:8000}
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost}
+      DB_CONNECTION: pgsql
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_DATABASE: gitinventory
+      DB_USERNAME: gitinventory
+      DB_PASSWORD: gitinventory
+      QUEUE_CONNECTION: redis
+      REDIS_HOST: redis
+      MAIL_MAILER: ${MAIL_MAILER:-log}
+      MAIL_HOST: ${MAIL_HOST:-}
+      MAIL_PORT: ${MAIL_PORT:-587}
+      MAIL_USERNAME: ${MAIL_USERNAME:-}
+      MAIL_PASSWORD: ${MAIL_PASSWORD:-}
+      MAIL_FROM_ADDRESS: ${MAIL_FROM_ADDRESS:-noreply@gitinventory.app}
+      PAYSTACK_SECRET_KEY: ${PAYSTACK_SECRET_KEY:-}
+      PAYSTACK_PUBLIC_KEY: ${PAYSTACK_PUBLIC_KEY:-}
+      BILLING_CALLBACK_URL: ${BILLING_CALLBACK_URL:-http://localhost/settings?billing=success}
+    ports:
+      - '8000:8000'
+    command: >
+      sh -c "php artisan migrate --force &&
+             php artisan db:seed --class=RolesAndPermissionsSeeder --force &&
+             php artisan serve --host=0.0.0.0 --port=8000"
+
+  queue:
+    build: ./gitinventory-backend
+    depends_on:
+      - backend
+    environment:
+      APP_KEY: ${APP_KEY}
+      APP_ENV: production
+      DB_CONNECTION: pgsql
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_DATABASE: gitinventory
+      DB_USERNAME: gitinventory
+      DB_PASSWORD: gitinventory
+      QUEUE_CONNECTION: redis
+      REDIS_HOST: redis
+      MAIL_MAILER: ${MAIL_MAILER:-log}
+      MAIL_HOST: ${MAIL_HOST:-}
+      MAIL_PORT: ${MAIL_PORT:-587}
+      MAIL_USERNAME: ${MAIL_USERNAME:-}
+      MAIL_PASSWORD: ${MAIL_PASSWORD:-}
+      MAIL_FROM_ADDRESS: ${MAIL_FROM_ADDRESS:-noreply@gitinventory.app}
+    command: php artisan queue:work --sleep=1 --tries=3
+
+  scheduler:
+    build: ./gitinventory-backend
+    depends_on:
+      - backend
+    environment:
+      APP_KEY: ${APP_KEY}
+      APP_ENV: production
+      DB_CONNECTION: pgsql
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_DATABASE: gitinventory
+      DB_USERNAME: gitinventory
+      DB_PASSWORD: gitinventory
+      MAIL_MAILER: ${MAIL_MAILER:-log}
+      MAIL_HOST: ${MAIL_HOST:-}
+      MAIL_PORT: ${MAIL_PORT:-587}
+      MAIL_USERNAME: ${MAIL_USERNAME:-}
+      MAIL_PASSWORD: ${MAIL_PASSWORD:-}
+      MAIL_FROM_ADDRESS: ${MAIL_FROM_ADDRESS:-noreply@gitinventory.app}
+    command: php artisan schedule:work
+
+  frontend:
+    build:
+      context: ./gitinventory-frontend
+      args:
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:8000}
+    depends_on:
+      - backend
+    ports:
+      - '80:80'
+
+volumes:
+  postgres_data:
