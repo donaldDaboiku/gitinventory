@@ -1,0 +1,202 @@
+/* Landing — teal warehouse desk, brand-first hero */
+
+.landing {
+  --landing-ink: #071a1f;
+  --landing-mist: #e8eef0;
+  --landing-teal: #0f766e;
+  --landing-teal-deep: #0a4f4a;
+  --landing-sand: #d6c4a8;
+  min-height: 100vh;
+  background: var(--landing-mist);
+  color: var(--landing-ink);
+  font-family: 'Manrope', 'Segoe UI', sans-serif;
+}
+
+.landing-hero {
+  position: relative;
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: grid;
+  align-items: end;
+  overflow: hidden;
+  color: #f4f7f6;
+}
+
+.landing-hero-media {
+  position: absolute;
+  inset: 0;
+  background:
+    url('https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?auto=format&fit=crop&w=2000&q=80')
+      center/cover no-repeat;
+  transform: scale(1.06);
+  animation: landing-ken 18s ease-out forwards;
+}
+
+.landing-hero-scrim {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(105deg, rgba(7, 26, 31, 0.88) 0%, rgba(7, 26, 31, 0.55) 48%, rgba(10, 79, 74, 0.35) 100%),
+    linear-gradient(to top, rgba(7, 26, 31, 0.75) 0%, transparent 45%);
+}
+
+.landing-hero-content {
+  position: relative;
+  z-index: 1;
+  width: min(920px, calc(100% - 48px));
+  margin: 0 auto 0 0;
+  padding: clamp(32px, 8vh, 72px) clamp(20px, 5vw, 64px) clamp(40px, 9vh, 88px);
+}
+
+.landing-brand {
+  margin: 0 0 18px;
+  font-family: 'Syne', 'Manrope', sans-serif;
+  font-size: clamp(2rem, 5.5vw, 3.75rem);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1;
+}
+
+.landing-headline {
+  margin: 0;
+  max-width: 14ch;
+  font-family: 'Syne', 'Manrope', sans-serif;
+  font-size: clamp(1.65rem, 4.2vw, 3rem);
+  font-weight: 700;
+  letter-spacing: -0.025em;
+  line-height: 1.08;
+}
+
+.landing-lede {
+  margin: 18px 0 0;
+  max-width: 38rem;
+  font-size: clamp(1rem, 1.6vw, 1.15rem);
+  line-height: 1.55;
+  color: rgba(244, 247, 246, 0.86);
+  font-weight: 500;
+}
+
+.landing-cta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 28px;
+}
+
+.landing-btn {
+  min-height: 48px;
+  padding: 0 22px;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  font-family: 'Manrope', sans-serif;
+  font-size: 0.95rem;
+  font-weight: 750;
+  cursor: pointer;
+  transition: transform 160ms ease, background 160ms ease, border-color 160ms ease;
+}
+
+.landing-btn:hover {
+  transform: translateY(-1px);
+}
+
+.landing-btn-primary {
+  background: #f4f7f6;
+  color: var(--landing-ink);
+}
+
+.landing-btn-primary:hover {
+  background: #fff;
+}
+
+.landing-btn-secondary {
+  background: transparent;
+  color: #f4f7f6;
+  border-color: rgba(244, 247, 246, 0.45);
+}
+
+.landing-btn-secondary:hover {
+  border-color: #f4f7f6;
+  background: rgba(244, 247, 246, 0.08);
+}
+
+.landing-section {
+  padding: clamp(48px, 10vh, 96px) clamp(20px, 5vw, 64px);
+  max-width: 720px;
+}
+
+.landing-section-title {
+  margin: 0;
+  font-family: 'Syne', 'Manrope', sans-serif;
+  font-size: clamp(1.5rem, 3vw, 2.1rem);
+  font-weight: 750;
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+  color: var(--landing-ink);
+}
+
+.landing-section-copy {
+  margin: 16px 0 0;
+  font-size: 1.05rem;
+  line-height: 1.6;
+  color: #3d4f55;
+  font-weight: 500;
+}
+
+.landing-rise {
+  opacity: 0;
+  transform: translateY(18px);
+  animation: landing-rise 700ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.landing-rise-delay-1 {
+  animation-delay: 120ms;
+}
+
+.landing-rise-delay-2 {
+  animation-delay: 220ms;
+}
+
+.landing-rise-delay-3 {
+  animation-delay: 340ms;
+}
+
+@keyframes landing-rise {
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes landing-ken {
+  to {
+    transform: scale(1);
+  }
+}
+
+@media (max-width: 720px) {
+  .landing-hero-content {
+    width: 100%;
+    padding-bottom: 48px;
+  }
+
+  .landing-headline {
+    max-width: none;
+  }
+
+  .landing-cta {
+    flex-direction: column;
+  }
+
+  .landing-btn {
+    width: 100%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .landing-hero-media,
+  .landing-rise {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
+}

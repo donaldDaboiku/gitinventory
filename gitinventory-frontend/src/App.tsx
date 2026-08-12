@@ -1,6 +1,9 @@
 import './App.css'
+import { useEffect, useState } from 'react'
 import { AuthPage } from './components/auth/AuthPage'
 import { EmailVerificationBanner } from './components/auth/EmailVerificationBanner'
+import { LandingPage } from './components/LandingPage'
+import './components/LandingPage.css'
 import { SubscriptionExpiredView } from './components/billing/SubscriptionExpiredView'
 import { TrialBanner } from './components/billing/TrialBanner'
 import { DrawerForm } from './components/DrawerForm'
@@ -22,8 +25,30 @@ import { useInventoryApp } from './hooks/useInventoryApp'
 
 function App() {
   const app = useInventoryApp()
+  const [showLanding, setShowLanding] = useState(true)
+
+  useEffect(() => {
+    if (app.authMode === 'reset' || app.authMode === 'forgot') {
+      setShowLanding(false)
+    }
+  }, [app.authMode])
 
   if (!app.token) {
+    if (showLanding) {
+      return (
+        <LandingPage
+          onSignIn={() => {
+            app.setAuthMode('login')
+            setShowLanding(false)
+          }}
+          onStartTrial={() => {
+            app.setAuthMode('register')
+            setShowLanding(false)
+          }}
+        />
+      )
+    }
+
     return (
       <AuthPage
         authMode={app.authMode}
@@ -34,6 +59,10 @@ function App() {
         onSubmit={app.submitAuth}
         onForgotPassword={app.submitForgotPassword}
         onResetPassword={app.submitResetPassword}
+        onBackToLanding={() => {
+          app.setAuthMode('login')
+          setShowLanding(true)
+        }}
       />
     )
   }

@@ -253,6 +253,25 @@
   text-transform: capitalize;
 }
 
+.password-field {
+  position: relative;
+  display: grid;
+}
+
+.password-field .input {
+  padding-right: 72px;
+}
+
+.password-toggle {
+  position: absolute;
+  right: 4px;
+  top: 50%;
+  transform: translateY(-50%);
+  min-height: 34px;
+  padding: 0 10px;
+  font-size: 0.78rem;
+}
+
 .input {
   width: 100%;
   min-height: 42px;

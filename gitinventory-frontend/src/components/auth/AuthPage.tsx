@@ -1,5 +1,6 @@
 import type { FormEvent } from 'react'
 import { Field } from '../forms/Field'
+import { PasswordField } from '../forms/PasswordField'
 import { Toast } from '../ui'
 import type { AuthMode } from '../../types'
 
@@ -12,6 +13,7 @@ export function AuthPage({
   onSubmit,
   onForgotPassword,
   onResetPassword,
+  onBackToLanding,
 }: {
   authMode: AuthMode
   setAuthMode: (mode: AuthMode) => void
@@ -21,6 +23,7 @@ export function AuthPage({
   onSubmit: (event: FormEvent<HTMLFormElement>) => void
   onForgotPassword: (event: FormEvent<HTMLFormElement>) => void
   onResetPassword: (event: FormEvent<HTMLFormElement>) => void
+  onBackToLanding?: () => void
 }) {
   if (authMode === 'forgot') {
     return (
@@ -68,11 +71,10 @@ export function AuthPage({
           <h2>Set new password</h2>
           <form className="form-grid" onSubmit={onResetPassword}>
             <input type="hidden" name="email" value={resetEmail ?? ''} />
-            <Field label="New password" name="password" type="password" autoComplete="new-password" required />
-            <Field
+            <PasswordField label="New password" name="password" autoComplete="new-password" required />
+            <PasswordField
               label="Confirm password"
               name="password_confirmation"
-              type="password"
               autoComplete="new-password"
               required
             />
@@ -129,18 +131,16 @@ export function AuthPage({
           )}
           <Field label="Email" name="email" type="email" autoComplete="email" required />
           {authMode === 'register' && <Field label="Phone" name="phone" autoComplete="tel" />}
-          <Field
+          <PasswordField
             label="Password"
             name="password"
-            type="password"
             autoComplete={authMode === 'login' ? 'current-password' : 'new-password'}
             required
           />
           {authMode === 'register' && (
-            <Field
+            <PasswordField
               label="Confirm password"
               name="password_confirmation"
-              type="password"
               autoComplete="new-password"
               required
             />
@@ -153,6 +153,11 @@ export function AuthPage({
           <button className="btn primary" disabled={loading}>
             {loading ? 'Please wait' : authMode === 'login' ? 'Sign in' : 'Start trial'}
           </button>
+          {onBackToLanding && (
+            <button className="btn ghost" type="button" onClick={onBackToLanding}>
+              Back to home
+            </button>
+          )}
         </form>
       </section>
       <Toast message={toast} />
