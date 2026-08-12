@@ -188,14 +188,22 @@ Emails sent today:
 **PostgreSQL** (example):
 
 ```bash
-docker compose exec postgres pg_dump -U gitinventory gitinventory > backup.sql
+docker compose exec postgres pg_dump -U gitinventory gitinventory > backup-$(date +%F).sql
 ```
 
 Restore:
 
 ```bash
-cat backup.sql | docker compose exec -T postgres psql -U gitinventory gitinventory
+cat backup-YYYY-MM-DD.sql | docker compose exec -T postgres psql -U gitinventory gitinventory
 ```
+
+### Automated daily backup (host cron)
+
+```bash
+0 2 * * * cd /var/www/GITInventory && docker compose exec -T postgres pg_dump -U gitinventory gitinventory | gzip > /var/backups/gitinventory-$(date +\%F).sql.gz
+```
+
+Keep at least 7 daily copies and run a restore drill on staging quarterly. See also [STAGING.md](STAGING.md).
 
 ---
 

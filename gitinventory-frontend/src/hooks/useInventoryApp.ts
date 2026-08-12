@@ -72,6 +72,8 @@ export function useInventoryApp() {
   const [billingPlans, setBillingPlans] = useState<BillingPlan[]>([])
   const [upgrading, setUpgrading] = useState(false)
   const [resendingVerification, setResendingVerification] = useState(false)
+  const [importingProducts, setImportingProducts] = useState(false)
+  const [posMode, setPosMode] = useState(false)
   const [settingsTab, setSettingsTab] = useState<
     'profile' | 'inventory' | 'team' | 'plan' | 'help' | 'audit'
   >('profile')
@@ -536,6 +538,57 @@ export function useInventoryApp() {
     notify('Category created.')
   }
 
+  const downloadProductImportTemplate = async () => {
+    if (!token) return
+    try {
+      await downloadWithToken(
+        'products/import/template',
+        'product-import-template.csv',
+        token,
+        'text/csv',
+      )
+      notify('Template downloaded.')
+    } catch (error) {
+      notify(error instanceof Error ? error.message : 'Template download failed.')
+    }
+  }
+
+  const importProductsCsv = async (file: File) => {
+    if (!token) return
+    setImportingProducts(true)
+    try {
+      const form = new FormData()
+      form.append('file', file)
+      const response = await fetch('/api/products/import', {
+        method: 'POST',
+        headers: {
+          Accept: 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: form,
+      })
+      const body = (await response.json()) as {
+        message?: string
+        imported?: number
+        failed?: number
+        errors?: Array<{ row: number; message: string }>
+      }
+      if (!response.ok) {
+        throw new Error(body.message || 'Import failed.')
+      }
+      const detail =
+        body.failed && body.errors?.length
+          ? ` First error (row ${body.errors[0].row}): ${body.errors[0].message}`
+          : ''
+      notify((body.message || 'Import complete.') + detail)
+      await loadPage('products')
+    } catch (error) {
+      notify(error instanceof Error ? error.message : 'Import failed.')
+    } finally {
+      setImportingProducts(false)
+    }
+  }
+
   const fetchProductCodes = useCallback(
     () => api<{ sku: string; barcode: string }>('products/codes/preview'),
     [api],
@@ -787,6 +840,29 @@ export function useInventoryApp() {
     }
   }
 
+  const submitPosSale = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    try {
+      const payload: Record<string, unknown> = normalizePayload(event.currentTarget)
+      payload.items = collectTransactionItems(event.currentTarget)
+      await api('sales', {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      })
+      setSaleLines([Date.now()])
+      notify('Sale saved.')
+      await loadPage('sales')
+      await loadBasics()
+    } catch (error) {
+      notify(error instanceof Error ? error.message : 'Sale failed.')
+    }
+  }
+
+  const openPosMode = () => {
+    setSaleLines([Date.now()])
+    setPosMode(true)
+  }
+
   const openTransactionDetail = async (type: 'sales' | 'purchases', id: number) => {
     try {
       const detail = await api<Transaction>(`${type}/${id}`)
@@ -872,6 +948,9 @@ export function useInventoryApp() {
     logout,
     loadPage,
     createCategory,
+    downloadProductImportTemplate,
+    importProductsCsv,
+    importingProducts,
     fetchProductCodes,
     lookupProduct,
     saveSettings,
@@ -891,6 +970,10 @@ export function useInventoryApp() {
     exportActivityLog,
     openPlanSettings,
     submitDrawer,
+    submitPosSale,
+    posMode,
+    setPosMode,
+    openPosMode,
     openTransactionDetail,
     navigate,
     openCreate,

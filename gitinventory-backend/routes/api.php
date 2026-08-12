@@ -90,6 +90,8 @@ Route::middleware(['auth:sanctum', CheckEmailVerified::class, CheckSubscription:
 
     // Products
     Route::get('products/codes/preview', [ProductController::class, 'previewCodes'])->middleware('can:products.create');
+    Route::get('products/import/template', [ProductController::class, 'importTemplate'])->middleware('can:products.create');
+    Route::post('products/import', [ProductController::class, 'import'])->middleware('can:products.create');
     Route::get('products/lookup', [ProductController::class, 'lookup'])->middleware('can:sales.create');
     Route::get('products/{product}/label', [ProductController::class, 'label'])->middleware('can:products.view');
     Route::apiResource('products', ProductController::class)->middleware([

@@ -24,6 +24,8 @@ Multi-tenant inventory, sales, and purchasing for small businesses. One workspac
 - **Auth** — forgot/reset password, email verification before workspace access
 - **Alerts** — daily low-stock email digests to tenant owners
 - **Audit** — CSV export of recent activity (Settings → Audit)
+- **Import** — bulk product CSV upload (Products → Bulk import)
+- **POS** — full-screen tablet sale mode (Sales → Open POS)
 - **Help** — in-app quick guide under Settings → Help
 - **Security** — tenant isolation, per-route permissions, subscription gate after trial
 
@@ -82,6 +84,8 @@ Or register a new account from the app (**Create account** → 14-day trial star
 |----------|----------|----------|
 | [docs/USER_MANUAL.md](docs/USER_MANUAL.md) | End users & admins | How to use every screen, roles, billing, barcode POS |
 | [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) | DevOps / hosting | Docker Compose, env vars, Paystack, mail, scheduler |
+| [docs/STAGING.md](docs/STAGING.md) | DevOps | Staging checklist before production |
+| [docs/API.md](docs/API.md) | Integrators | REST endpoint reference |
 | [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) | Developers | Local setup, tests, project structure, API notes |
 | [gitinventory-backend/HERD_SETUP.md](gitinventory-backend/HERD_SETUP.md) | macOS Herd users | Laravel Herd + PostgreSQL setup |
 
@@ -125,11 +129,11 @@ Full steps: [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)
 
 These are sensible follow-ups after the current release:
 
-1. **Staging environment** — Deploy a staging stack with Paystack test keys before production.
-2. **Mobile-friendly POS polish** — Dedicated full-screen sale mode for tablets beyond the widened drawer.
-3. **API documentation** — OpenAPI/Swagger or Postman collection for integrators.
-4. **Backups** — Automated Postgres backups and restore runbook for production.
-5. **Bulk product import** — CSV upload for catalog onboarding.
+1. **Staging deploy** — Follow [docs/STAGING.md](docs/STAGING.md) with Paystack test keys.
+2. **Automated backups** — Cron `pg_dump` + restore drill (see [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md#backups)).
+3. **OpenAPI codegen** — Generate a formal OpenAPI file from [docs/API.md](docs/API.md) / routes.
+4. **Queued mail** — Move welcome/verification/reset mail onto the queue for faster API responses.
+5. **E2E tests** — Playwright coverage for login, CSV import, and POS sale.
 
 See [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md#recommended-next-work) for technical backlog items.
 

@@ -6,19 +6,61 @@ use App\Http\Controllers\Controller;
 use App\Models\Product;
 use App\Services\BarcodeImageService;
 use App\Services\ProductIdentifierService;
+use App\Services\ProductImportService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class ProductController extends Controller
 {
     public function __construct(
         private ProductIdentifierService $identifiers,
         private BarcodeImageService $barcodes,
+        private ProductImportService $importer,
     ) {}
+
+    public function importTemplate(): StreamedResponse
+    {
+        $filename = 'product-import-template.csv';
+
+        return response()->streamDownload(function () {
+            $out = fopen('php://output', 'w');
+            fputcsv($out, ['name', 'unit', 'cost_price', 'selling_price', 'quantity', 'sku', 'barcode', 'min_stock_level', 'tax_rate', 'category']);
+            fputcsv($out, ['Paracetamol 500mg', 'piece', '50', '100', '20', '', '', '5', '0', 'Medicine']);
+            fclose($out);
+        }, $filename, [
+            'Content-Type' => 'text/csv; charset=UTF-8',
+        ]);
+    }
+
+    public function import(Request $request): JsonResponse
+    {
+        $request->validate([
+            'file' => ['required', 'file', 'mimes:csv,txt', 'max:2048'],
+        ]);
+
+        $contents = file_get_contents($request->file('file')->getRealPath() ?: '');
+        if ($contents === false || trim($contents) === '') {
+            return response()->json(['message' => 'Could not read CSV file.'], 422);
+        }
+
+        try {
+            $result = $this->importer->import($request->user(), $contents);
+        } catch (\InvalidArgumentException $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
+
+        return response()->json([
+            'message'  => "Imported {$result['imported']} product(s). {$result['failed']} row(s) failed.",
+            'imported' => $result['imported'],
+            'failed'   => $result['failed'],
+            'errors'   => $result['errors'],
+        ], $result['imported'] > 0 ? 201 : 422);
+    }
 
     public function previewCodes(Request $request): JsonResponse
     {

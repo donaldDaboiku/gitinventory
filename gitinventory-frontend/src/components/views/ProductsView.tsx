@@ -12,8 +12,12 @@ export function ProductsView({
   search,
   setSearch,
   loading,
+  importing,
+  canImport,
   onLoadMore,
   onCreateCategory,
+  onImportProducts,
+  onDownloadImportTemplate,
   onEdit,
   onDelete,
   onPrintLabel,
@@ -26,8 +30,12 @@ export function ProductsView({
   search: string
   setSearch: (value: string) => void
   loading: boolean
+  importing: boolean
+  canImport: boolean
   onLoadMore: () => void
   onCreateCategory: (name: string) => Promise<void>
+  onImportProducts: (file: File) => Promise<void>
+  onDownloadImportTemplate: () => void
   onEdit: (product: Product) => void
   onDelete: (product: Product) => void
   onPrintLabel: (product: Product) => void
@@ -65,6 +73,31 @@ export function ProductsView({
         </div>
         <span className="tiny">Search updates automatically</span>
       </section>
+
+      {canImport && (
+        <section className="panel compact">
+          <PanelTitle title="Bulk import" note="Upload a CSV of products (max 200 rows)" />
+          <div className="toolbar-left">
+            <button className="btn ghost" type="button" onClick={onDownloadImportTemplate}>
+              Download template
+            </button>
+            <label className="btn primary" style={{ cursor: importing ? 'wait' : 'pointer' }}>
+              {importing ? 'Importing…' : 'Upload CSV'}
+              <input
+                type="file"
+                accept=".csv,text/csv"
+                hidden
+                disabled={importing}
+                onChange={(event) => {
+                  const file = event.target.files?.[0]
+                  event.target.value = ''
+                  if (file) void onImportProducts(file)
+                }}
+              />
+            </label>
+          </div>
+        </section>
+      )}
 
       <section className="panel compact">
         <PanelTitle title="Categories" note={`${categories.length} available for product assignment`} />

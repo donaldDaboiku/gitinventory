@@ -9,6 +9,7 @@ export function Topbar({
   can,
   onRefresh,
   onCreate,
+  onOpenPos,
   onExport,
   onExportPdf,
 }: {
@@ -19,6 +20,7 @@ export function Topbar({
   can: (permission: string) => boolean
   onRefresh: () => void
   onCreate: () => void
+  onOpenPos?: () => void
   onExport?: () => void
   onExportPdf?: () => void
 }) {
@@ -38,6 +40,11 @@ export function Topbar({
         <button className="btn ghost" onClick={onRefresh}>
           {loading ? 'Loading' : 'Refresh'}
         </button>
+        {page === 'sales' && can('sales.create') && onOpenPos && (
+          <button className="btn ghost" onClick={onOpenPos}>
+            Open POS
+          </button>
+        )}
         {showCreate && (
           <button className="btn primary" onClick={onCreate}>
             {addLabel(page)}

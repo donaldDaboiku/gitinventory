@@ -16,6 +16,7 @@ import { ProductsView } from './components/views/ProductsView'
 import { ReportsView } from './components/views/ReportsView'
 import { StockView } from './components/views/StockView'
 import { TransactionView } from './components/views/TransactionView'
+import { PosSaleScreen } from './components/views/PosSaleScreen'
 import { Toast } from './components/ui'
 import { useInventoryApp } from './hooks/useInventoryApp'
 
@@ -74,6 +75,7 @@ function App() {
           can={app.can}
           onRefresh={() => void app.loadPage(app.page)}
           onCreate={app.openCreate}
+          onOpenPos={app.openPosMode}
           onExport={() => void app.exportFinancialReport()}
           onExportPdf={() => void app.exportFinancialReportPdf()}
         />
@@ -102,8 +104,12 @@ function App() {
               search={app.search}
               setSearch={app.setSearch}
               loading={app.loading}
+              importing={app.importingProducts}
+              canImport={app.can('products.create')}
               onLoadMore={() => void app.loadPage('products', { append: true })}
               onCreateCategory={app.createCategory}
+              onImportProducts={app.importProductsCsv}
+              onDownloadImportTemplate={() => void app.downloadProductImportTemplate()}
               onEdit={app.openProductDrawer}
               onDelete={app.deleteProduct}
               onPrintLabel={app.setLabelProduct}
@@ -218,6 +224,17 @@ function App() {
             lookupProduct={app.lookupProduct}
           />
         </Drawer>
+      )}
+
+      {app.posMode && (
+        <PosSaleScreen
+          data={app.data}
+          saleLines={app.saleLines}
+          setSaleLines={app.setSaleLines}
+          onSubmit={app.submitPosSale}
+          onClose={() => app.setPosMode(false)}
+          lookupProduct={app.lookupProduct}
+        />
       )}
 
       <Toast message={app.toast} />

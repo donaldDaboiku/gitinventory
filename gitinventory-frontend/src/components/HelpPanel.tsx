@@ -41,6 +41,14 @@ const topics = [
     title: 'Audit export',
     body: 'Owners can download a CSV of recent activity under Settings → Audit.',
   },
+  {
+    title: 'Bulk product import',
+    body: 'Products → Bulk import. Download the CSV template, fill rows, then Upload CSV (max 200 rows).',
+  },
+  {
+    title: 'Full-screen POS',
+    body: 'Sales → Open POS for a tablet-friendly sale desk. Scan barcodes, save, and keep selling without leaving the screen.',
+  },
 ]
 
 export function HelpPanel() {

@@ -146,6 +146,7 @@ Notable test files:
 | `PasswordResetTest` | Forgot/reset password API and email |
 | `EmailVerificationTest` | Verify gate, signed link, resend |
 | `ActivityLogExportTest` | Settings audit CSV export |
+| `ProductImportTest` | CSV template + bulk product import |
 | `LowStockAlertTest` | Scheduled low-stock digest command |
 | `WelcomeMailTest` | Registration email |
 
@@ -186,15 +187,15 @@ Leave `PAYSTACK_SECRET_KEY` empty. Checkout returns `demo_mode: true`; frontend 
 
 ### Product / UX
 
-- Full-screen tablet POS mode
-- Bulk product import (CSV)
+- Purchase CSV import / supplier price lists
+- Multi-branch stock transfer UI polish
 
 ### Engineering
 
-- OpenAPI spec generated from routes
+- OpenAPI YAML generated from routes
 - Queue welcome / verification / password-reset mail for faster API responses
 - Redis cache for dashboard metrics
-- E2E tests (Playwright) for login and sale flow
+- E2E tests (Playwright) for login, CSV import, and POS sale
 
 ### Operations
 

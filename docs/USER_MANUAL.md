@@ -105,6 +105,13 @@ Click **Refresh** if numbers look stale.
 
 You can type or scan an existing packaged product barcode when creating/editing a product, or click **Regenerate SKU & barcode** for suggestions.
 
+### Bulk import (CSV)
+
+1. On **Products**, open **Bulk import**.
+2. Click **Download template** and fill rows (`name`, `unit`, `cost_price`, `selling_price`, `quantity` required).
+3. Optional columns: `sku`, `barcode`, `min_stock_level`, `tax_rate`, `category`.
+4. Click **Upload CSV** (max 200 rows). Valid rows are imported; failed rows are reported in the toast.
+
 ### Search and categories
 
 - Use the **search box** to find products by name, SKU, or barcode (updates automatically).
@@ -162,6 +169,12 @@ Stock is reduced automatically when the sale is saved.
 4. Adjust quantity if needed, then complete payment fields and save.
 
 If the code is not found, check that the product exists and is **active**.
+
+### Full-screen POS (tablets)
+
+1. On **Sales**, click **Open POS**.
+2. Use the full-screen desk to scan items and save sales repeatedly.
+3. Click **Exit POS** to return to the sales list.
 
 ### View sale details & receipt
 
