@@ -124,7 +124,15 @@ src/
 
 ### Tenant isolation
 
-Route model binding scopes records to `auth()->user()->tenant_id` in `AppServiceProvider`.
+Models that store business data use `BelongsToTenant` (`app/Models/Concerns/BelongsToTenant.php`): a global scope filters by `auth()->user()->tenant_id`, and `creating` fills `tenant_id` when missing. Controllers may still pass `tenant_id` explicitly — the scope is the safety net.
+
+CLI / webhooks (no authenticated user) do not apply the scope, so scheduled jobs can still query by tenant deliberately.
+
+Route model binding for products, sales, etc. relies on that scope; `teamMember` (User) stays an explicit `where('tenant_id', …)` because users are looked up globally at login.
+
+### Auth tokens (deliberate)
+
+The SPA currently uses Sanctum **Bearer tokens in `localStorage`**. That is intentional for a simple token API (and future mobile clients), with the known XSS tradeoff versus httpOnly cookie SPA auth. Prefer cookie + CSRF if the only client is this same-origin SPA.
 
 ---
 

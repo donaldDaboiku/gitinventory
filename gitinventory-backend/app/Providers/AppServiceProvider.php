@@ -47,12 +47,17 @@ class AppServiceProvider extends ServiceProvider
         ];
 
         foreach ($models as $parameter => $modelClass) {
-            Route::bind($parameter, function (string $value) use ($modelClass) {
-                $tenantId = auth::user()?->tenant_id;
+            Route::bind($parameter, function (string $value) use ($modelClass, $parameter) {
+                $tenantId = Auth::user()?->tenant_id;
                 abort_unless($tenantId, 401);
 
                 /** @var class-string<Model> $modelClass */
-                return $modelClass::where('tenant_id', $tenantId)->findOrFail($value);
+                // Users are not BelongsToTenant-scoped (login looks up globally).
+                if ($parameter === 'teamMember') {
+                    return $modelClass::where('tenant_id', $tenantId)->findOrFail($value);
+                }
+
+                return $modelClass::findOrFail($value);
             });
         }
     }

@@ -52,6 +52,35 @@ class TenantIsolationTest extends TestCase
             ->assertJsonCount(0, 'data');
     }
 
+    public function test_global_scope_hides_other_tenant_products_without_manual_filter(): void
+    {
+        $user = $this->userForTenant();
+        $otherTenant = Tenant::create([
+            'name' => 'Scope Other',
+            'slug' => 'scope-other',
+            'email' => 'scope-other@example.com',
+        ]);
+
+        Product::create($this->productData([
+            'tenant_id' => $user->tenant_id,
+            'name' => 'Mine',
+            'sku' => 'MINE-001',
+        ]));
+
+        Product::create($this->productData([
+            'tenant_id' => $otherTenant->id,
+            'name' => 'Theirs',
+            'sku' => 'THEIRS-001',
+        ]));
+
+        Sanctum::actingAs($user);
+
+        $visible = Product::query()->pluck('name')->all();
+
+        $this->assertSame(['Mine'], $visible);
+        $this->assertSame(2, Product::withoutGlobalScopes()->count());
+    }
+
     public function test_product_cannot_use_category_from_another_tenant(): void
     {
         $user = $this->userForTenant();

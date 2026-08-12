@@ -41,7 +41,7 @@ class TeamUserController extends Controller
             'phone'             => $validated['phone'] ?? null,
             'password'          => Hash::make($validated['password']),
             'is_active'         => true,
-            'email_verified_at' => now(), // ponytail: owner-invited emails are trusted
+            'email_verified_at' => now(),
         ]);
 
         $user->assignRole($validated['role']);

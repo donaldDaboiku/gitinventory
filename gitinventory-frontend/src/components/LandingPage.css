@@ -3,13 +3,13 @@
 .landing {
   --landing-ink: #071a1f;
   --landing-mist: #e8eef0;
-  --landing-teal: #0f766e;
-  --landing-teal-deep: #0a4f4a;
-  --landing-sand: #d6c4a8;
+  --landing-muted: #4a5c62;
   min-height: 100vh;
   background: var(--landing-mist);
   color: var(--landing-ink);
-  font-family: 'Manrope', 'Segoe UI', sans-serif;
+  font-family: 'Manrope', sans-serif;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
 }
 
 .landing-hero {
@@ -36,61 +36,63 @@
   position: absolute;
   inset: 0;
   background:
-    linear-gradient(105deg, rgba(7, 26, 31, 0.88) 0%, rgba(7, 26, 31, 0.55) 48%, rgba(10, 79, 74, 0.35) 100%),
-    linear-gradient(to top, rgba(7, 26, 31, 0.75) 0%, transparent 45%);
+    linear-gradient(105deg, rgba(7, 26, 31, 0.9) 0%, rgba(7, 26, 31, 0.62) 52%, rgba(10, 79, 74, 0.4) 100%),
+    linear-gradient(to top, rgba(7, 26, 31, 0.78) 0%, transparent 42%);
 }
 
 .landing-hero-content {
   position: relative;
   z-index: 1;
-  width: min(920px, calc(100% - 48px));
-  margin: 0 auto 0 0;
-  padding: clamp(32px, 8vh, 72px) clamp(20px, 5vw, 64px) clamp(40px, 9vh, 88px);
+  width: min(720px, calc(100% - 48px));
+  margin: 0;
+  padding: clamp(28px, 7vh, 64px) clamp(20px, 5vw, 56px) clamp(36px, 8vh, 72px);
 }
 
 .landing-brand {
-  margin: 0 0 18px;
+  margin: 0 0 14px;
   font-family: 'Syne', 'Manrope', sans-serif;
-  font-size: clamp(2rem, 5.5vw, 3.75rem);
+  font-size: clamp(2.4rem, 6.5vw, 4rem);
   font-weight: 800;
-  letter-spacing: -0.03em;
-  line-height: 1;
+  letter-spacing: -0.04em;
+  line-height: 0.95;
 }
 
 .landing-headline {
   margin: 0;
-  max-width: 14ch;
-  font-family: 'Syne', 'Manrope', sans-serif;
-  font-size: clamp(1.65rem, 4.2vw, 3rem);
-  font-weight: 700;
-  letter-spacing: -0.025em;
-  line-height: 1.08;
+  max-width: 18ch;
+  font-family: 'Manrope', sans-serif;
+  font-size: clamp(1.15rem, 2.4vw, 1.45rem);
+  font-weight: 600;
+  letter-spacing: -0.015em;
+  line-height: 1.35;
+  color: rgba(244, 247, 246, 0.94);
 }
 
 .landing-lede {
-  margin: 18px 0 0;
-  max-width: 38rem;
-  font-size: clamp(1rem, 1.6vw, 1.15rem);
+  margin: 14px 0 0;
+  max-width: 34rem;
+  font-size: clamp(0.95rem, 1.4vw, 1.05rem);
   line-height: 1.55;
-  color: rgba(244, 247, 246, 0.86);
+  color: rgba(244, 247, 246, 0.78);
   font-weight: 500;
 }
 
 .landing-cta {
   display: flex;
   flex-wrap: wrap;
-  gap: 12px;
-  margin-top: 28px;
+  gap: 10px;
+  margin-top: 26px;
 }
 
 .landing-btn {
-  min-height: 48px;
-  padding: 0 22px;
+  min-height: 46px;
+  padding: 0 20px;
   border-radius: 6px;
   border: 1px solid transparent;
   font-family: 'Manrope', sans-serif;
-  font-size: 0.95rem;
-  font-weight: 750;
+  font-size: 0.92rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
   cursor: pointer;
   transition: transform 160ms ease, background 160ms ease, border-color 160ms ease;
 }
@@ -111,7 +113,7 @@
 .landing-btn-secondary {
   background: transparent;
   color: #f4f7f6;
-  border-color: rgba(244, 247, 246, 0.45);
+  border-color: rgba(244, 247, 246, 0.4);
 }
 
 .landing-btn-secondary:hover {
@@ -120,44 +122,44 @@
 }
 
 .landing-section {
-  padding: clamp(48px, 10vh, 96px) clamp(20px, 5vw, 64px);
-  max-width: 720px;
+  padding: clamp(44px, 9vh, 80px) clamp(20px, 5vw, 56px);
+  max-width: 640px;
 }
 
 .landing-section-title {
   margin: 0;
   font-family: 'Syne', 'Manrope', sans-serif;
-  font-size: clamp(1.5rem, 3vw, 2.1rem);
-  font-weight: 750;
-  letter-spacing: -0.02em;
-  line-height: 1.15;
+  font-size: clamp(1.35rem, 2.6vw, 1.85rem);
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  line-height: 1.2;
   color: var(--landing-ink);
 }
 
 .landing-section-copy {
-  margin: 16px 0 0;
-  font-size: 1.05rem;
-  line-height: 1.6;
-  color: #3d4f55;
+  margin: 14px 0 0;
+  font-size: 1rem;
+  line-height: 1.65;
+  color: var(--landing-muted);
   font-weight: 500;
 }
 
 .landing-rise {
   opacity: 0;
-  transform: translateY(18px);
-  animation: landing-rise 700ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  transform: translateY(14px);
+  animation: landing-rise 650ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
 }
 
 .landing-rise-delay-1 {
-  animation-delay: 120ms;
+  animation-delay: 100ms;
 }
 
 .landing-rise-delay-2 {
-  animation-delay: 220ms;
+  animation-delay: 180ms;
 }
 
 .landing-rise-delay-3 {
-  animation-delay: 340ms;
+  animation-delay: 280ms;
 }
 
 @keyframes landing-rise {
@@ -176,7 +178,7 @@
 @media (max-width: 720px) {
   .landing-hero-content {
     width: 100%;
-    padding-bottom: 48px;
+    padding-bottom: 44px;
   }
 
   .landing-headline {
