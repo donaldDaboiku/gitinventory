@@ -27,7 +27,7 @@ class SettingsController extends Controller
 
         $validated = $request->validate([
             'name'     => ['sometimes', 'string', 'max:255'],
-            'email'    => ['sometimes', 'email', 'max:255'],
+            'email'    => ['sometimes', 'email', 'max:255', 'unique:tenants,email,'.$tenant->id],
             'phone'    => ['nullable', 'string', 'max:30'],
             'address'  => ['nullable', 'string', 'max:500'],
             'city'     => ['nullable', 'string', 'max:100'],

@@ -82,6 +82,37 @@ class SettingsTest extends TestCase
         $this->putJson('/api/settings', ['name' => 'Hacked'])->assertForbidden();
     }
 
+    public function test_updating_tenant_email_to_another_tenants_email_returns_422(): void
+    {
+        Tenant::create([
+            'name'          => 'Other Business',
+            'slug'          => 'other-settings-email',
+            'email'         => 'taken@demo.test',
+            'trial_ends_at' => now()->addDays(14),
+        ]);
+
+        $user = $this->owner();
+        Sanctum::actingAs($user);
+
+        $this->putJson('/api/settings', [
+            'email' => 'taken@demo.test',
+        ])->assertUnprocessable()
+            ->assertJsonValidationErrors(['email']);
+    }
+
+    public function test_owner_can_keep_their_own_tenant_email(): void
+    {
+        $user = $this->owner();
+        Sanctum::actingAs($user);
+
+        $this->putJson('/api/settings', [
+            'email' => 'owner@demo.test',
+            'name'  => 'Same Email Pharmacy',
+        ])->assertOk()
+            ->assertJsonPath('settings.tenant.email', 'owner@demo.test')
+            ->assertJsonPath('settings.tenant.name', 'Same Email Pharmacy');
+    }
+
     private function owner(): User
     {
         $tenant = Tenant::create([
