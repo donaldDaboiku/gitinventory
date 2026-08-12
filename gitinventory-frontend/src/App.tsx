@@ -28,7 +28,10 @@ function App() {
         setAuthMode={app.setAuthMode}
         loading={app.loading}
         toast={app.toast}
+        resetEmail={app.resetEmail}
         onSubmit={app.submitAuth}
+        onForgotPassword={app.submitForgotPassword}
+        onResetPassword={app.submitResetPassword}
       />
     )
   }

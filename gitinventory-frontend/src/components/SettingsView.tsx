@@ -1,10 +1,11 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
 import { Empty, PanelTitle, SimpleTable } from './ui'
+import { HelpPanel } from './HelpPanel'
 import type { SettingsPayload, TeamUser, BillingPlan } from '../types'
 import type { MoneyFormatter } from '../lib/format'
 
-type SettingsTab = 'profile' | 'inventory' | 'team' | 'plan'
+type SettingsTab = 'profile' | 'inventory' | 'team' | 'plan' | 'help'
 
 const timezones = [
   'Africa/Lagos',
@@ -108,6 +109,7 @@ export function SettingsView({
               ['inventory', 'Inventory'],
               ['team', 'Team'],
               ['plan', 'Plan'],
+              ['help', 'Help'],
             ] as Array<[SettingsTab, string]>
           ).map(([key, label]) => (
             <button
@@ -301,6 +303,8 @@ export function SettingsView({
           )}
         </section>
       )}
+
+      {tab === 'help' && <HelpPanel />}
     </>
   )
 }

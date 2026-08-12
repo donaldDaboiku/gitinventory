@@ -42,6 +42,8 @@ export function useInventoryApp() {
   const [token, setToken] = useState(() => localStorage.getItem('gitinventory_token'))
   const [user, setUser] = useState<User | null>(() => readJson<User>('gitinventory_user'))
   const [authMode, setAuthMode] = useState<AuthMode>('login')
+  const [resetToken, setResetToken] = useState('')
+  const [resetEmail, setResetEmail] = useState('')
   const [page, setPage] = useState<PageKey>('dashboard')
   const [drawer, setDrawer] = useState<PageKey | null>(null)
   const [editingProduct, setEditingProduct] = useState<Product | null>(null)
@@ -355,6 +357,16 @@ export function useInventoryApp() {
   }, [])
 
   useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    if (params.get('auth') === 'reset' && params.get('token') && params.get('email')) {
+      setAuthMode('reset')
+      setResetToken(params.get('token') ?? '')
+      setResetEmail(params.get('email') ?? '')
+      window.history.replaceState({}, '', window.location.pathname)
+    }
+  }, [])
+
+  useEffect(() => {
     if (!token) return
 
     const params = new URLSearchParams(window.location.search)
@@ -420,6 +432,7 @@ export function useInventoryApp() {
 
   const submitAuth = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
+    if (authMode !== 'login' && authMode !== 'register') return
     setLoading(true)
 
     try {
@@ -436,6 +449,51 @@ export function useInventoryApp() {
       notify(response.message || 'Welcome back.')
     } catch (error) {
       notify(error instanceof Error ? error.message : 'Authentication failed.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const submitForgotPassword = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    setLoading(true)
+
+    try {
+      const payload = normalizePayload(event.currentTarget)
+      const response = await api<{ message?: string }>('auth/forgot-password', {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      })
+      notify(response.message || 'Check your email for a reset link.')
+      setAuthMode('login')
+    } catch (error) {
+      notify(error instanceof Error ? error.message : 'Could not send reset link.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const submitResetPassword = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    setLoading(true)
+
+    try {
+      const form = new FormData(event.currentTarget)
+      const response = await api<{ message?: string }>('auth/reset-password', {
+        method: 'POST',
+        body: JSON.stringify({
+          email: form.get('email'),
+          token: resetToken,
+          password: form.get('password'),
+          password_confirmation: form.get('password_confirmation'),
+        }),
+      })
+      notify(response.message || 'Password updated.')
+      setAuthMode('login')
+      setResetToken('')
+      setResetEmail('')
+    } catch (error) {
+      notify(error instanceof Error ? error.message : 'Could not reset password.')
     } finally {
       setLoading(false)
     }
@@ -713,6 +771,7 @@ export function useInventoryApp() {
     user,
     authMode,
     setAuthMode,
+    resetEmail,
     page,
     pageMeta,
     visiblePages,
@@ -755,6 +814,8 @@ export function useInventoryApp() {
     can,
     money,
     submitAuth,
+    submitForgotPassword,
+    submitResetPassword,
     logout,
     loadPage,
     createCategory,

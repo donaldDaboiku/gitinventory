@@ -2,10 +2,12 @@
 
 namespace App\Models;
 
+use App\Mail\PasswordResetMail;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Facades\Mail;
 use Laravel\Sanctum\HasApiTokens;
 use Spatie\Activitylog\Models\Concerns\LogsActivity;
 use Spatie\Activitylog\Support\LogOptions;
@@ -53,5 +55,13 @@ class User extends Authenticatable
     public function tenant(): \Illuminate\Database\Eloquent\Relations\BelongsTo
     {
         return $this->belongsTo(Tenant::class);
+    }
+
+    public function sendPasswordResetNotification($token): void
+    {
+        $frontend = rtrim((string) config('app.frontend_url', config('app.url')), '/');
+        $resetUrl = $frontend.'/?auth=reset&token='.urlencode($token).'&email='.urlencode($this->email);
+
+        Mail::to($this->email)->send(new PasswordResetMail($this, $resetUrl));
     }
 }

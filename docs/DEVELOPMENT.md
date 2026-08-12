@@ -143,6 +143,8 @@ Notable test files:
 | `PermissionEnforcementTest` | Role permissions |
 | `BillingTest` | Subscription gate, Paystack webhook, demo checkout |
 | `Phase4Test` | Barcode lookup, PDF exports, invoice prefix |
+| `PasswordResetTest` | Forgot/reset password API and email |
+| `LowStockAlertTest` | Scheduled low-stock digest command |
 | `WelcomeMailTest` | Registration email |
 
 Frontend:
@@ -183,15 +185,13 @@ Leave `PAYSTACK_SECRET_KEY` empty. Checkout returns `demo_mode: true`; frontend 
 ### Product / UX
 
 - Dedicated tablet POS layout
-- Password reset and email verification flows
-- Low-stock email digest (backend query exists)
+- Email verification flow
 - Bulk product import (CSV)
 
 ### Engineering
 
-- GitHub Actions CI (PHPUnit + `npm run build`)
 - OpenAPI spec generated from routes
-- Queue welcome mail for faster registration response
+- Queue welcome and password-reset mail for faster API responses
 - Redis cache for dashboard metrics
 - E2E tests (Playwright) for login and sale flow
 
@@ -209,6 +209,7 @@ Leave `PAYSTACK_SECRET_KEY` empty. Checkout returns `demo_mode: true`; frontend 
 ```powershell
 php artisan route:list --path=api
 php artisan subscriptions:send-trial-reminders
+php artisan inventory:send-low-stock-alerts
 php artisan queue:work
 php artisan schedule:work
 php artisan pail

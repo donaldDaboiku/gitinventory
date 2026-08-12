@@ -21,6 +21,9 @@ Multi-tenant inventory, sales, and purchasing for small businesses. One workspac
 - **Reports** — financial summary, daily breakdown, CSV and PDF export
 - **Settings** — business profile, inventory defaults, team invites, subscription plans
 - **Billing** — 14-day trial, Paystack checkout (or demo mode without keys)
+- **Auth** — forgot-password and reset-password flows (email link opens the app)
+- **Alerts** — daily low-stock email digests to tenant owners
+- **Help** — in-app quick guide under Settings → Help
 - **Security** — tenant isolation, per-route permissions, subscription gate after trial
 
 ## Quick start (local development)
@@ -103,7 +106,10 @@ php artisan test
 ```powershell
 cd gitinventory-frontend
 npm run build
+npm run lint
 ```
+
+GitHub Actions runs PHPUnit and the frontend build on every push/PR (see `.github/workflows/ci.yml`).
 
 ## Production deployment (overview)
 
@@ -118,14 +124,12 @@ Full steps: [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)
 
 These are sensible follow-ups after the current release:
 
-1. **CI pipeline** — GitHub Actions: `php artisan test`, `npm run build` on every push.
-2. **Staging environment** — Deploy a staging stack with Paystack test keys before production.
-3. **Email verification & password reset** — Tables exist; add API + UI flows.
-4. **Low-stock email digests** — Scheduled job using existing low-stock query.
-5. **Audit & compliance** — Export activity log for sensitive actions (Spatie Activity Log is already installed).
-6. **Mobile-friendly POS** — Larger tap targets and dedicated sale screen for tablets.
-7. **API documentation** — OpenAPI/Swagger or Postman collection for integrators.
-8. **Backups** — Automated Postgres backups and restore runbook for production.
+1. **Staging environment** — Deploy a staging stack with Paystack test keys before production.
+2. **Email verification** — Confirm new accounts before full access (tables already exist).
+3. **Audit & compliance** — Export activity log for sensitive actions (Spatie Activity Log is already installed).
+4. **Mobile-friendly POS** — Larger tap targets and dedicated sale screen for tablets.
+5. **API documentation** — OpenAPI/Swagger or Postman collection for integrators.
+6. **Backups** — Automated Postgres backups and restore runbook for production.
 
 See [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md#recommended-next-work) for technical backlog items.
 

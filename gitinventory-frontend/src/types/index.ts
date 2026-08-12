@@ -10,7 +10,7 @@ export type PageKey =
   | 'reports'
   | 'settings'
 
-export type AuthMode = 'login' | 'register'
+export type AuthMode = 'login' | 'register' | 'forgot' | 'reset'
 export type StockMode = 'in' | 'out' | 'adjust'
 
 export type Tenant = {

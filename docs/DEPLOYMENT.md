@@ -17,7 +17,7 @@ Browser → nginx (frontend container, port 80)
 Background processes:
 
 - **queue** — `php artisan queue:work` (emails, future jobs)
-- **scheduler** — `php artisan schedule:work` (trial reminder emails daily)
+- **scheduler** — `php artisan schedule:work` (trial reminders at 08:00, low-stock alerts at 07:30)
 
 Health check: `GET /up` on the backend.
 
@@ -162,7 +162,9 @@ Production: configure SMTP or Resend/Postmark via Laravel mail config.
 Emails sent today:
 
 - Welcome (registration)
+- Password reset (forgot-password link)
 - Trial ending (3 and 1 days before, via scheduler)
+- Low stock digest (daily to tenant owners, via scheduler)
 
 ---
 
@@ -173,6 +175,7 @@ Emails sent today:
 - [ ] Paystack webhook tested with a small test payment
 - [ ] Welcome email received on test registration
 - [ ] Trial reminder command: `php artisan subscriptions:send-trial-reminders`
+- [ ] Low-stock alert command: `php artisan inventory:send-low-stock-alerts`
 - [ ] Database backups scheduled
 - [ ] `APP_DEBUG=false` in production
 - [ ] Strong `APP_KEY` and DB passwords

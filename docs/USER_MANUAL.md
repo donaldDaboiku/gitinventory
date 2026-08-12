@@ -30,6 +30,15 @@ This guide explains how to use the GITInventory web application day to day. It a
 2. Enter your **email** and **password**.
 3. Click **Sign in**.
 
+### Forgot password
+
+1. On the sign-in screen, click **Forgot password?**
+2. Enter your **email** and click **Send reset link**.
+3. Open the link in the email (it opens the app with a **Set new password** form).
+4. Enter and confirm your new password, then sign in.
+
+If you do not receive an email, check spam or ask your administrator to confirm mail is configured on the server.
+
 ### Create a new business (trial)
 
 1. On the login screen, click **Create account**.
@@ -307,7 +316,8 @@ Check your connection and permissions. Report PDF/CSV requires **reports.export*
 
 ### Getting help
 
-For server or billing issues, contact your system administrator with your **business name**, **email**, and a screenshot of the error message.
+- **In the app:** **Settings → Help** — short guides for products, POS, stock, reports, team, and billing.
+- **Server or billing issues:** contact your system administrator with your **business name**, **email**, and a screenshot of the error message.
 
 ---
 
