@@ -1,0 +1,14 @@
+# Staging overrides — Paystack test keys, non-privileged host ports
+# docker compose -f docker-compose.yml -f docker-compose.staging.yml --env-file .env.staging up --build -d
+
+services:
+  backend:
+    environment:
+      APP_ENV: staging
+      APP_DEBUG: ${APP_DEBUG:-false}
+    ports:
+      - '${BACKEND_PORT:-8001}:8000'
+
+  frontend:
+    ports:
+      - '${FRONTEND_PORT:-8080}:80'

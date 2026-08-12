@@ -1,25 +1,46 @@
 # Staging environment
 
-Use a staging stack before production so Paystack webhooks, mail, and Docker config can be verified safely.
+Use the Docker stack with staging overrides and Paystack **test** keys before production.
+
+## Quick start (local staging)
+
+```powershell
+cd GITInventory
+copy .env.staging.example .env.staging
+.\scripts\gen-app-key.ps1 -EnvFile .env.staging
+# Edit .env.staging: DB_PASSWORD, optional PAYSTACK test keys, mail
+
+docker compose -f docker-compose.yml -f docker-compose.staging.yml --env-file .env.staging up --build -d
+```
+
+| Service | URL |
+|---------|-----|
+| App | http://localhost:8080 |
+| API (direct) | http://localhost:8001 |
+| Health | http://localhost:8080/up |
+
+Optional demo user:
+
+```powershell
+docker compose -f docker-compose.yml -f docker-compose.staging.yml --env-file .env.staging exec backend php artisan db:seed --class=DemoUserSeeder
+```
+
+Then mark the demo email verified if needed, or use **Create account** and verify via `MAIL_MAILER=log` (`docker compose … exec backend tail -f storage/logs/laravel.log`).
 
 ## Goals
 
-- Same compose layout as production (`docker-compose.yml`)
-- Paystack **test** keys only
-- Separate database and domains (e.g. `staging-api.example.com`, `staging.example.com`)
-- `APP_DEBUG=false` still recommended; use logs + `php artisan pail` instead
+- Same images as production (`docker-compose.yml` + `docker-compose.staging.yml`)
+- Paystack **test** keys only (or empty keys → demo billing)
+- Separate `.env.staging` secrets (never reuse production `APP_KEY` / DB password)
+- Host ports `8080` / `8001` by default so they do not clash with local PHP on `8000`
 
-## Setup checklist
+## Remote staging hosts
 
-1. Copy `.env.production.example` to a staging `.env` (do not reuse production secrets).
-2. Set:
-   - `APP_URL` / `FRONTEND_URL` / `BILLING_CALLBACK_URL` to staging hosts
-   - `PAYSTACK_SECRET_KEY` / `PAYSTACK_PUBLIC_KEY` to **test** keys
-   - `MAIL_*` to a catch-all inbox or log driver for early smoke tests
-3. `docker compose up --build`
-4. Run migrations/seeders inside the backend container.
-5. Configure Paystack webhook URL to `https://staging-api…/api/billing/webhook`.
-6. Register a test business → confirm verify email (or mark verified in DB for QA) → create sale → export report.
+Set in `.env.staging`:
+
+- `APP_URL` / `FRONTEND_URL` / `BILLING_CALLBACK_URL` to staging hostnames
+- Put TLS (Caddy/nginx/cloud LB) in front of the frontend port
+- Paystack webhook: `https://staging-api…/api/billing/webhook`
 
 ## Smoke tests
 
@@ -27,9 +48,17 @@ Use a staging stack before production so Paystack webhooks, mail, and Docker con
 - [ ] Login + password reset
 - [ ] Product CSV import
 - [ ] POS / barcode sale + receipt PDF
-- [ ] Demo billing checkout (empty Paystack keys) **or** Paystack test charge
-- [ ] Low-stock / trial reminder commands once via `php artisan …`
+- [ ] Demo billing **or** Paystack test charge
+- [ ] `php artisan subscriptions:send-trial-reminders`
+- [ ] `php artisan inventory:send-low-stock-alerts`
+- [ ] Activity CSV export (Settings → Audit)
 
 ## Promote to production
 
-Only after staging smoke tests pass: rotate to live Paystack keys, production mail, backups, and DNS. Keep staging available for later releases.
+1. Smoke tests green on staging.
+2. `copy .env.production.example .env` → strong `DB_PASSWORD`, live Paystack keys, real SMTP.
+3. `.\scripts\gen-app-key.ps1` (new key, not the staging one).
+4. `docker compose --env-file .env up --build -d`
+5. Configure live webhook + HTTPS + nightly `pg_dump` (see [DEPLOYMENT.md](DEPLOYMENT.md)).
+
+Keep staging running for the next release.

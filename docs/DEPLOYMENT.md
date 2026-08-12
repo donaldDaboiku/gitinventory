@@ -2,95 +2,102 @@
 
 Deploy GITInventory with Docker Compose (recommended) or manually on a VPS with PHP, PostgreSQL, Node, and nginx.
 
+For a dry-run first, use [STAGING.md](STAGING.md).
+
 ---
 
 ## Architecture
 
 ```
-Browser → nginx (frontend container, port 80)
-              ↓ /api/*
-          Laravel (backend container, port 8000)
+Browser → frontend nginx (:80)
+              ↓ /api/*  and  /up
+          Laravel backend (:8000)
               ↓
           PostgreSQL + Redis
+              ↑
+          queue worker + scheduler
 ```
 
 Background processes:
 
-- **queue** — `php artisan queue:work` (emails, future jobs)
-- **scheduler** — `php artisan schedule:work` (trial reminders at 08:00, low-stock alerts at 07:30)
+- **queue** — `php artisan queue:work` (mail and jobs)
+- **scheduler** — trial reminders (08:00) + low-stock alerts (07:30)
 
-Health check: `GET /up` on the backend.
+Health: `GET /up` (also proxied from the frontend container).
 
 ---
 
-## Docker Compose (recommended)
+## Production (Docker)
 
-### 1. Prepare environment
+### 1. Environment
 
-From the repository root:
-
-```bash
-cp .env.production.example .env
+```powershell
+cd GITInventory
+copy .env.production.example .env
+.\scripts\gen-app-key.ps1
 ```
 
-Edit `.env`:
+Edit `.env` — at minimum set:
 
 | Variable | Description |
 |----------|-------------|
-| `APP_KEY` | Run `php artisan key:generate --show` in backend and paste |
-| `APP_URL` | Public API URL, e.g. `https://api.yourdomain.com` |
-| `FRONTEND_URL` | Public app URL, e.g. `https://app.yourdomain.com` |
-| `VITE_API_BASE_URL` | Same as API URL (baked into frontend build) |
+| `APP_KEY` | From `gen-app-key.ps1` |
+| `DB_PASSWORD` | Strong password |
+| `APP_URL` | Public API URL (or LB URL) |
+| `FRONTEND_URL` | Public SPA URL |
 | `BILLING_CALLBACK_URL` | `{FRONTEND_URL}/settings?billing=success` |
-| `PAYSTACK_SECRET_KEY` | Paystack live or test secret |
-| `PAYSTACK_PUBLIC_KEY` | Paystack public key |
-| `MAIL_MAILER` | `smtp`, `resend`, etc. |
-| `MAIL_*` | Provider credentials |
-| `MAIL_FROM_ADDRESS` | e.g. `noreply@yourdomain.com` |
+| `VITE_API_BASE_URL` | Leave **empty** when using the bundled nginx `/api` proxy |
+| `PAYSTACK_*` | **Live** keys |
+| `MAIL_*` | Production SMTP / provider |
 
 ### 2. Build and run
 
-```bash
-docker compose up --build -d
+```powershell
+docker compose --env-file .env up --build -d
 ```
 
-Services:
-
-| Service | Port | Role |
-|---------|------|------|
-| `frontend` | 80 | Static React app + `/api` proxy |
+| Service | Default port | Role |
+|---------|--------------|------|
+| `frontend` | 80 | SPA + `/api` proxy |
 | `backend` | 8000 | Laravel API |
-| `postgres` | internal | Database |
-| `redis` | internal | Queues |
-| `queue` | — | Queue worker |
-| `scheduler` | — | Cron scheduler |
+| `postgres` | internal | DB |
+| `redis` | internal | Queue / cache / session |
+| `queue` | — | Worker |
+| `scheduler` | — | Schedule |
 
-On first start, the backend runs migrations and seeds **roles/permissions**.
+On first start the backend migrates and seeds roles/permissions.
 
-### 3. Seed demo data (optional)
+### 3. Optional demo user
 
-```bash
-docker compose exec backend php artisan db:seed --class=DemoUserSeeder
+```powershell
+docker compose --env-file .env exec backend php artisan db:seed --class=DemoUserSeeder
 ```
 
 ### 4. Paystack webhook
-
-In the Paystack dashboard, set the webhook URL to:
 
 ```
 https://api.yourdomain.com/api/billing/webhook
 ```
 
-Events: **charge.success**. The app verifies the `x-paystack-signature` header.
+(or your frontend origin `/api/billing/webhook` if the API is only exposed via the SPA proxy)
 
-### 5. TLS / reverse proxy
+Verify `x-paystack-signature`. Event: **charge.success**.
 
-In production, put **Caddy**, **nginx**, or a cloud load balancer in front of:
+### 5. TLS
 
-- `frontend` for the SPA
-- Ensure `/api` routes to the backend if not using the bundled frontend nginx proxy
+Terminate TLS on Caddy, nginx, or a cloud load balancer in front of `FRONTEND_PORT`. Backend trusts `X-Forwarded-*` proxies.
 
-Set Sanctum stateful domains if using cookie auth (current app uses **Bearer tokens** from localStorage).
+---
+
+## Staging
+
+```powershell
+copy .env.staging.example .env.staging
+.\scripts\gen-app-key.ps1 -EnvFile .env.staging
+docker compose -f docker-compose.yml -f docker-compose.staging.yml --env-file .env.staging up --build -d
+```
+
+App: http://localhost:8080 — details in [STAGING.md](STAGING.md).
 
 ---
 
@@ -111,7 +118,7 @@ php artisan route:cache
 php artisan view:cache
 ```
 
-Run with **php-fpm + nginx** or `php artisan serve` only for testing.
+Prefer **php-fpm + nginx** in long-lived production; Compose currently uses `artisan serve` inside the backend container for a single-box deploy.
 
 **Supervisor** (queue):
 
@@ -133,10 +140,11 @@ autorestart=true
 ```bash
 cd gitinventory-frontend
 npm ci
-VITE_API_BASE_URL=https://api.yourdomain.com npm run build
+# Same-origin /api proxy: omit VITE_API_BASE_URL or leave empty
+npm run build
 ```
 
-Serve `dist/` with nginx. Proxy `/api` to the Laravel upstream, or host API on a subdomain and set `VITE_API_BASE_URL` accordingly.
+Serve `dist/` with nginx; proxy `/api` to Laravel.
 
 ---
 
@@ -148,62 +156,52 @@ Serve `dist/` with nginx. Proxy `/api` to the Laravel upstream, or host API on a
 |-----|---------|---------|
 | `BILLING_CURRENCY` | NGN | Paystack currency |
 | `BILLING_CALLBACK_URL` | — | Redirect after payment |
-| `BILLING_STARTER_AMOUNT` | 1500000 | Starter price in **kobo** (₦15,000) |
-| `BILLING_BUSINESS_AMOUNT` | 3500000 | Business price in kobo (₦35,000) |
+| `BILLING_STARTER_AMOUNT` | 1500000 | Starter price in **kobo** |
+| `BILLING_BUSINESS_AMOUNT` | 3500000 | Business price in kobo |
 
-Without `PAYSTACK_SECRET_KEY`, checkout uses **demo mode** (instant activation via `confirm-demo`).
+Empty `PAYSTACK_SECRET_KEY` → **demo mode** checkout.
 
 ### Mail
 
-Development: `MAIL_MAILER=log` writes to `storage/logs/laravel.log`.
+- Dev / early staging: `MAIL_MAILER=log`
+- Production: SMTP or Resend/Postmark
 
-Production: configure SMTP or Resend/Postmark via Laravel mail config.
-
-Emails sent today:
-
-- Welcome (registration)
-- Email verification (registration; signed link)
-- Password reset (forgot-password link)
-- Trial ending (3 and 1 days before, via scheduler)
-- Low stock digest (daily to tenant owners, via scheduler)
+Emails: welcome, verify, password reset, trial ending, low-stock digest.
 
 ---
 
 ## Post-deploy checklist
 
-- [ ] `php artisan test` passed in CI or staging
-- [ ] HTTPS on frontend and API
-- [ ] Paystack webhook tested with a small test payment
-- [ ] Welcome email received on test registration
-- [ ] Trial reminder command: `php artisan subscriptions:send-trial-reminders`
-- [ ] Low-stock alert command: `php artisan inventory:send-low-stock-alerts`
-- [ ] Database backups scheduled
-- [ ] `APP_DEBUG=false` in production
-- [ ] Strong `APP_KEY` and DB passwords
+- [ ] CI / `php artisan test` green
+- [ ] HTTPS on the public app URL
+- [ ] Paystack webhook (test on staging, live on production)
+- [ ] Welcome + verification email
+- [ ] Trial reminder + low-stock commands once
+- [ ] Nightly Postgres backup
+- [ ] `APP_DEBUG=false`
+- [ ] Strong `APP_KEY` and `DB_PASSWORD`
 
 ---
 
 ## Backups
 
-**PostgreSQL** (example):
-
 ```bash
-docker compose exec postgres pg_dump -U gitinventory gitinventory > backup-$(date +%F).sql
+docker compose --env-file .env exec -T postgres pg_dump -U gitinventory gitinventory | gzip > backup-$(date +%F).sql.gz
 ```
 
 Restore:
 
 ```bash
-cat backup-YYYY-MM-DD.sql | docker compose exec -T postgres psql -U gitinventory gitinventory
+gunzip -c backup-YYYY-MM-DD.sql.gz | docker compose --env-file .env exec -T postgres psql -U gitinventory gitinventory
 ```
 
-### Automated daily backup (host cron)
+### Host cron (daily)
 
 ```bash
-0 2 * * * cd /var/www/GITInventory && docker compose exec -T postgres pg_dump -U gitinventory gitinventory | gzip > /var/backups/gitinventory-$(date +\%F).sql.gz
+0 2 * * * cd /var/www/GITInventory && docker compose --env-file .env exec -T postgres pg_dump -U gitinventory gitinventory | gzip > /var/backups/gitinventory-$(date +\%F).sql.gz
 ```
 
-Keep at least 7 daily copies and run a restore drill on staging quarterly. See also [STAGING.md](STAGING.md).
+Keep ≥7 daily copies; restore-drill on staging quarterly.
 
 ---
 
@@ -211,8 +209,9 @@ Keep at least 7 daily copies and run a restore drill on staging quarterly. See a
 
 | Issue | Check |
 |-------|--------|
-| 502 on `/api` | Backend container running; nginx proxy target |
-| CORS / 401 | Token in `Authorization: Bearer`; API URL matches build |
-| 402 on all routes | Trial expired; use billing endpoints or extend trial in DB |
-| Webhook not activating | Paystack signature secret; metadata `tenant_id` and `plan` |
-| Mail not sent | `MAIL_*` env, queue worker running if using queued mail |
+| Compose refuses to start | `APP_KEY` / `DB_PASSWORD` set in env file |
+| 502 on `/api` | `backend` healthy; `docker compose logs backend` |
+| 401 | Bearer token; SPA talking to correct origin |
+| 402 | Trial expired — billing or extend trial |
+| Webhook silent | Signature secret; `tenant_id` + `plan` metadata |
+| Mail missing | `MAIL_*`, `queue` container running |

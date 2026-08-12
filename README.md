@@ -118,10 +118,21 @@ GitHub Actions runs PHPUnit and the frontend build on every push/PR (see `.githu
 
 ## Production deployment (overview)
 
-1. Copy `.env.production.example` to `.env` at the repo root and fill in secrets.
-2. Generate `APP_KEY` (`php artisan key:generate` inside backend).
-3. Set `PAYSTACK_*`, mail, and `FRONTEND_URL` / `BILLING_CALLBACK_URL`.
-4. Run `docker compose up --build`.
+**Staging first** (recommended):
+
+```powershell
+copy .env.staging.example .env.staging
+.\scripts\gen-app-key.ps1 -EnvFile .env.staging
+docker compose -f docker-compose.yml -f docker-compose.staging.yml --env-file .env.staging up --build -d
+```
+
+App: http://localhost:8080 — see [docs/STAGING.md](docs/STAGING.md).
+
+**Production:**
+
+1. Copy `.env.production.example` to `.env` and set `DB_PASSWORD`, mail, live Paystack keys, URLs.
+2. Run `.\scripts\gen-app-key.ps1`.
+3. `docker compose --env-file .env up --build -d`.
 
 Full steps: [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)
 
@@ -129,11 +140,11 @@ Full steps: [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)
 
 These are sensible follow-ups after the current release:
 
-1. **Staging deploy** — Follow [docs/STAGING.md](docs/STAGING.md) with Paystack test keys.
-2. **Automated backups** — Cron `pg_dump` + restore drill (see [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md#backups)).
-3. **OpenAPI codegen** — Generate a formal OpenAPI file from [docs/API.md](docs/API.md) / routes.
-4. **Queued mail** — Move welcome/verification/reset mail onto the queue for faster API responses.
-5. **E2E tests** — Playwright coverage for login, CSV import, and POS sale.
+1. **Run staging smoke tests** — [docs/STAGING.md](docs/STAGING.md) checklist, then promote.
+2. **TLS + live Paystack webhook** on the production host.
+3. **Nightly Postgres backups** — [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md#backups).
+4. **OpenAPI codegen** — from [docs/API.md](docs/API.md) / routes.
+5. **Queued mail + Sanctum cookie SPA auth** — if you want faster APIs and httpOnly sessions.
 
 See [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md#recommended-next-work) for technical backlog items.
 

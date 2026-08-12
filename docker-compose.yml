@@ -1,110 +1,112 @@
+# GITInventory — production / staging stack
+# Usage:
+#   cp .env.production.example .env   # or .env.staging.example
+#   # set APP_KEY and secrets
+#   docker compose up --build -d
+# Staging ports/overrides:
+#   docker compose -f docker-compose.yml -f docker-compose.staging.yml up --build -d
+
 services:
   postgres:
     image: postgres:16-alpine
     environment:
-      POSTGRES_DB: gitinventory
-      POSTGRES_USER: gitinventory
-      POSTGRES_PASSWORD: gitinventory
+      POSTGRES_DB: ${DB_DATABASE:-gitinventory}
+      POSTGRES_USER: ${DB_USERNAME:-gitinventory}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD in .env}
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ['CMD-SHELL', 'pg_isready -U gitinventory']
+      test: ['CMD-SHELL', 'pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB']
       interval: 5s
       timeout: 5s
       retries: 10
+    restart: unless-stopped
 
   redis:
     image: redis:7-alpine
+    restart: unless-stopped
 
   backend:
     build: ./gitinventory-backend
     depends_on:
       postgres:
         condition: service_healthy
-    environment:
+      redis:
+        condition: service_started
+    environment: &laravel-env
+      CONTAINER_ROLE: backend
       APP_NAME: GITInventory
-      APP_ENV: production
-      APP_KEY: ${APP_KEY}
-      APP_DEBUG: 'false'
+      APP_ENV: ${APP_ENV:-production}
+      APP_KEY: ${APP_KEY:?Set APP_KEY in .env}
+      APP_DEBUG: ${APP_DEBUG:-false}
       APP_URL: ${APP_URL:-http://localhost:8000}
       FRONTEND_URL: ${FRONTEND_URL:-http://localhost}
       DB_CONNECTION: pgsql
       DB_HOST: postgres
       DB_PORT: 5432
-      DB_DATABASE: gitinventory
-      DB_USERNAME: gitinventory
-      DB_PASSWORD: gitinventory
+      DB_DATABASE: ${DB_DATABASE:-gitinventory}
+      DB_USERNAME: ${DB_USERNAME:-gitinventory}
+      DB_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD in .env}
       QUEUE_CONNECTION: redis
       REDIS_HOST: redis
+      CACHE_STORE: redis
+      SESSION_DRIVER: redis
       MAIL_MAILER: ${MAIL_MAILER:-log}
       MAIL_HOST: ${MAIL_HOST:-}
       MAIL_PORT: ${MAIL_PORT:-587}
       MAIL_USERNAME: ${MAIL_USERNAME:-}
       MAIL_PASSWORD: ${MAIL_PASSWORD:-}
+      MAIL_ENCRYPTION: ${MAIL_ENCRYPTION:-tls}
       MAIL_FROM_ADDRESS: ${MAIL_FROM_ADDRESS:-noreply@gitinventory.app}
+      MAIL_FROM_NAME: ${MAIL_FROM_NAME:-GITInventory}
       PAYSTACK_SECRET_KEY: ${PAYSTACK_SECRET_KEY:-}
       PAYSTACK_PUBLIC_KEY: ${PAYSTACK_PUBLIC_KEY:-}
       BILLING_CALLBACK_URL: ${BILLING_CALLBACK_URL:-http://localhost/settings?billing=success}
+      BILLING_CURRENCY: ${BILLING_CURRENCY:-NGN}
+      BILLING_STARTER_AMOUNT: ${BILLING_STARTER_AMOUNT:-1500000}
+      BILLING_BUSINESS_AMOUNT: ${BILLING_BUSINESS_AMOUNT:-3500000}
     ports:
-      - '8000:8000'
-    command: >
-      sh -c "php artisan migrate --force &&
-             php artisan db:seed --class=RolesAndPermissionsSeeder --force &&
-             php artisan serve --host=0.0.0.0 --port=8000"
+      - '${BACKEND_PORT:-8000}:8000'
+    healthcheck:
+      test: ['CMD-SHELL', 'php -r "exit(@file_get_contents(\"http://127.0.0.1:8000/up\") === false ? 1 : 0);"']
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 40s
+    restart: unless-stopped
 
   queue:
     build: ./gitinventory-backend
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
     environment:
-      APP_KEY: ${APP_KEY}
-      APP_ENV: production
-      DB_CONNECTION: pgsql
-      DB_HOST: postgres
-      DB_PORT: 5432
-      DB_DATABASE: gitinventory
-      DB_USERNAME: gitinventory
-      DB_PASSWORD: gitinventory
-      QUEUE_CONNECTION: redis
-      REDIS_HOST: redis
-      MAIL_MAILER: ${MAIL_MAILER:-log}
-      MAIL_HOST: ${MAIL_HOST:-}
-      MAIL_PORT: ${MAIL_PORT:-587}
-      MAIL_USERNAME: ${MAIL_USERNAME:-}
-      MAIL_PASSWORD: ${MAIL_PASSWORD:-}
-      MAIL_FROM_ADDRESS: ${MAIL_FROM_ADDRESS:-noreply@gitinventory.app}
-    command: php artisan queue:work --sleep=1 --tries=3
+      <<: *laravel-env
+      CONTAINER_ROLE: queue
+    restart: unless-stopped
 
   scheduler:
     build: ./gitinventory-backend
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
     environment:
-      APP_KEY: ${APP_KEY}
-      APP_ENV: production
-      DB_CONNECTION: pgsql
-      DB_HOST: postgres
-      DB_PORT: 5432
-      DB_DATABASE: gitinventory
-      DB_USERNAME: gitinventory
-      DB_PASSWORD: gitinventory
-      MAIL_MAILER: ${MAIL_MAILER:-log}
-      MAIL_HOST: ${MAIL_HOST:-}
-      MAIL_PORT: ${MAIL_PORT:-587}
-      MAIL_USERNAME: ${MAIL_USERNAME:-}
-      MAIL_PASSWORD: ${MAIL_PASSWORD:-}
-      MAIL_FROM_ADDRESS: ${MAIL_FROM_ADDRESS:-noreply@gitinventory.app}
-    command: php artisan schedule:work
+      <<: *laravel-env
+      CONTAINER_ROLE: scheduler
+    restart: unless-stopped
 
   frontend:
     build:
       context: ./gitinventory-frontend
       args:
-        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:8000}
+        # SPA calls /api via nginx proxy — absolute URL only needed if API is on another origin
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-}
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
     ports:
-      - '80:80'
+      - '${FRONTEND_PORT:-80}:80'
+    restart: unless-stopped
 
 volumes:
   postgres_data:
