@@ -59,7 +59,7 @@ jobs:
       DB_DATABASE: database/e2e.sqlite
       QUEUE_CONNECTION: sync
       CACHE_STORE: array
-      SESSION_DRIVER: array
+      SESSION_DRIVER: file
       MAIL_MAILER: array
       VITE_API_BASE_URL: http://127.0.0.1:8000
     steps:

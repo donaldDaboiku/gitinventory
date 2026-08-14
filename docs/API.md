@@ -1,14 +1,16 @@
 # GITInventory API
 
 Base URL: `{APP_URL}/api`  
-Auth: `Authorization: Bearer {token}` (Sanctum)
+Auth:
+- **SPA** — Sanctum session cookie. Request `{APP_URL}/sanctum/csrf-cookie`, then send `X-XSRF-TOKEN` on state-changing requests.
+- **API / mobile** — `Authorization: Bearer {token}` from login/register. The SPA ignores this token.
 
 ## Auth
 
 | Method | Path | Notes |
 |--------|------|-------|
 | POST | `/auth/register` | Creates tenant + owner; sends welcome + verify email |
-| POST | `/auth/login` | Returns token + user |
+| POST | `/auth/login` | Starts SPA session + returns user and Bearer token |
 | POST | `/auth/logout` | Auth required |
 | GET | `/auth/me` | Auth required |
 | POST | `/auth/forgot-password` | Always 200 (does not reveal existence) |
@@ -52,6 +54,6 @@ A machine-readable spec lives in [openapi.yaml](openapi.yaml). Import it into Po
 
 ## Postman quick start
 
-1. Import [openapi.yaml](openapi.yaml) or create environment variables `baseUrl` and `token`.
-2. Login → set `token` from response.
-3. Call protected routes with Bearer token.
+1. Import [openapi.yaml](openapi.yaml) or set `baseUrl` and `token`.
+2. Login → set `token` from the response for Bearer clients.
+3. SPA clients: request `/sanctum/csrf-cookie`, keep cookies, send decoded `XSRF-TOKEN` as `X-XSRF-TOKEN` on POST/PUT/PATCH/DELETE.

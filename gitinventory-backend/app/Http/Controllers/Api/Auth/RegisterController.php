@@ -8,6 +8,7 @@ use App\Models\Tenant;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use App\Mail\WelcomeMail;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -67,10 +68,16 @@ class RegisterController extends Controller
             Mail::to($user->email)->send(new WelcomeMail($user, $tenant));
             $user->sendEmailVerificationNotification();
 
+            if ($request->hasSession()) {
+                Auth::login($user);
+                $request->session()->regenerate();
+            }
+
             $token = $user->createToken('auth-token', ['*'], now()->addDays(30))->plainTextToken;
 
             return response()->json([
                 'message' => 'Registration successful. Your 14-day trial has started. Please verify your email.',
+                'token'   => $token,
                 'user'    => [
                     'id'                => $user->id,
                     'name'              => $user->name,
@@ -84,7 +91,6 @@ class RegisterController extends Controller
                         'trial_ends_at' => $tenant->trial_ends_at,
                     ],
                 ],
-                'token' => $token,
             ], 201);
 
         } catch (\Throwable $e) {

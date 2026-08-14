@@ -51,6 +51,8 @@ Edit `.env` — at minimum set:
 | `FRONTEND_URL` | Public SPA URL |
 | `BILLING_CALLBACK_URL` | `{FRONTEND_URL}/settings?billing=success` |
 | `VITE_API_BASE_URL` | Leave **empty** when using the bundled nginx `/api` proxy |
+| `SESSION_SECURE_COOKIE` | `true` when the public app uses HTTPS |
+| `SANCTUM_STATEFUL_DOMAINS` | Public SPA host, e.g. `app.yourdomain.com` |
 | `PAYSTACK_*` | **Live** keys |
 | `MAIL_*` | Production SMTP / provider |
 
@@ -242,7 +244,7 @@ Keep ≥7 daily copies; restore-drill on staging quarterly.
 |-------|--------|
 | Compose refuses to start | `APP_KEY` / `DB_PASSWORD` set in env file |
 | 502 on `/api` | `backend` healthy; `docker compose logs backend` |
-| 401 | Bearer token; SPA talking to correct origin |
+| 401 or 419 | SPA origin is in `SANCTUM_STATEFUL_DOMAINS`; session cookie and `/sanctum/csrf-cookie` proxy are available |
 | 402 | Trial expired — billing or extend trial |
 | Webhook silent | Signature secret; `tenant_id` + `plan` metadata |
 | Mail missing | `MAIL_*`, `queue` container running |

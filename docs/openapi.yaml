@@ -4,7 +4,9 @@ info:
   version: 1.0.0
   description: |
     Multi-tenant inventory, sales, and purchasing API.
-    Authenticate with Sanctum: `Authorization: Bearer {token}`.
+    SPA: Sanctum session cookie. Obtain `/sanctum/csrf-cookie`, then send
+    `X-XSRF-TOKEN` on state-changing requests. API/mobile: `Authorization: Bearer {token}`
+    from login/register.
     Business routes require a verified email and an active trial or subscription.
   contact:
     name: GITInventory
@@ -26,6 +28,7 @@ tags:
   - name: Settings
 
 security:
+  - sessionAuth: []
   - bearerAuth: []
 
 paths:
@@ -71,7 +74,7 @@ paths:
                 password: { type: string }
       responses:
         '200':
-          description: Token and user
+          description: Session cookie, Bearer token, and user
           content:
             application/json:
               schema:
@@ -86,7 +89,7 @@ paths:
   /auth/logout:
     post:
       tags: [Auth]
-      summary: Revoke current token
+      summary: End current session and revoke Bearer token
       responses:
         '200': { description: Logged out }
 
@@ -432,6 +435,10 @@ paths:
 
 components:
   securitySchemes:
+    sessionAuth:
+      type: apiKey
+      in: cookie
+      name: gitinventory_session
     bearerAuth:
       type: http
       scheme: bearer

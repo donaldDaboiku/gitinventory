@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\Auth;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
 
@@ -35,15 +36,17 @@ class LoginController extends Controller
             return response()->json(['message' => 'Your business account is inactive. Please contact support.'], 403);
         }
 
-        // Revoke old tokens (optional — comment out to allow multiple device login)
-        // $user->tokens()->delete();
-
         $user->update(['last_login_at' => now()]);
+        if ($request->hasSession()) {
+            Auth::login($user);
+            $request->session()->regenerate();
+        }
 
         $token = $user->createToken('auth-token', ['*'], now()->addDays(30))->plainTextToken;
 
         return response()->json([
             'message' => 'Login successful.',
+            'token'   => $token,
             'user'    => [
                 'id'                => $user->id,
                 'name'              => $user->name,
@@ -60,7 +63,6 @@ class LoginController extends Controller
                     'trial_ends_at'       => $user->tenant->trial_ends_at,
                 ] : null,
             ],
-            'token' => $token,
         ]);
     }
 }

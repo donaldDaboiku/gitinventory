@@ -111,7 +111,7 @@ src/
 ## API conventions
 
 - Base path: `/api`
-- Auth: `Authorization: Bearer {sanctum_token}`
+- Auth: SPA uses Sanctum httpOnly session cookie + `X-XSRF-TOKEN`; API clients use `Authorization: Bearer {token}`
 - Errors: JSON `{ message, errors? }`
 - **402** — subscription expired (billing routes still work)
 - **401** — invalid/expired token
@@ -130,9 +130,13 @@ CLI / webhooks (no authenticated user) do not apply the scope, so scheduled jobs
 
 Route model binding for products, sales, etc. relies on that scope; `teamMember` (User) stays an explicit `where('tenant_id', …)` because users are looked up globally at login.
 
-### Auth tokens (deliberate)
+### SPA authentication
 
-The SPA currently uses Sanctum **Bearer tokens in `localStorage`**. That is intentional for a simple token API (and future mobile clients), with the known XSS tradeoff versus httpOnly cookie SPA auth. Prefer cookie + CSRF if the only client is this same-origin SPA.
+The SPA uses Sanctum’s httpOnly session cookie. It requests `/sanctum/csrf-cookie` before
+state-changing requests and sends the readable `XSRF-TOKEN` cookie as `X-XSRF-TOKEN`.
+The session itself is never stored in `localStorage`. Login still returns a Bearer token for
+API/mobile clients; the SPA ignores it. Local Vite origins must be present in
+`SANCTUM_STATEFUL_DOMAINS`; the supplied `.env.example` includes port 5173.
 
 ---
 

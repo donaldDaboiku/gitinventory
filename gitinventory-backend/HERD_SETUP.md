@@ -238,7 +238,7 @@ composer dev
 ## Important notes
 
 - **Never expose the `.env` file** — it contains `APP_KEY`
-- **Sanctum** is already configured for API token auth — the frontend should send `Authorization: Bearer {token}`
+- **Sanctum** — SPA session cookies plus optional Bearer tokens for API clients. Add the frontend host to `SANCTUM_STATEFUL_DOMAINS`.
 - **All queries are tenant-scoped** — `tenant_id` check is on every controller
 - **DB transactions** are used in Sale and Purchase creation to prevent partial writes
 - **Stock movements** are always logged — full audit trail is built in

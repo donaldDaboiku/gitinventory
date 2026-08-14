@@ -1,14 +1,11 @@
-export async function downloadWithToken(
+export async function downloadWithSession(
   path: string,
   filename: string,
-  token: string | null,
   accept = 'application/pdf',
 ) {
-  if (!token) return
-
   const response = await fetch(`/api/${path}`, {
+    credentials: 'include',
     headers: {
-      Authorization: `Bearer ${token}`,
       Accept: accept,
     },
   })

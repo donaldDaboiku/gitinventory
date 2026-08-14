@@ -2,10 +2,10 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { FormEvent } from 'react'
 import { addLabel, pageViewPermission, pages } from '../config/navigation'
 import { useDebouncedValue } from './useDebouncedValue'
-import { createApiClient } from '../lib/api'
-import { downloadWithToken } from '../lib/download'
+import { createApiClient, csrfHeaders } from '../lib/api'
+import { downloadWithSession } from '../lib/download'
 import { createMoneyFormatter } from '../lib/format'
-import { collectTransactionItems, normalizePayload, readJson } from '../lib/form'
+import { collectTransactionItems, normalizePayload } from '../lib/form'
 import { appendQuery, getList, LIST_PAGE_SIZE, parsePaginated } from '../lib/list'
 import type {
   ApiList,
@@ -39,8 +39,8 @@ const emptyTransactionFilters: TransactionFilters = {
 }
 
 export function useInventoryApp() {
-  const [token, setToken] = useState(() => localStorage.getItem('gitinventory_token'))
-  const [user, setUser] = useState<User | null>(() => readJson<User>('gitinventory_user'))
+  const [user, setUser] = useState<User | null>(null)
+  const [authReady, setAuthReady] = useState(false)
   const [authMode, setAuthMode] = useState<AuthMode>('login')
   const [resetToken, setResetToken] = useState('')
   const [resetEmail, setResetEmail] = useState('')
@@ -116,9 +116,6 @@ export function useInventoryApp() {
   }
 
   const clearSession = useCallback(() => {
-    localStorage.removeItem('gitinventory_token')
-    localStorage.removeItem('gitinventory_user')
-    setToken(null)
     setUser(null)
     setPage('dashboard')
     setDrawer(null)
@@ -129,12 +126,12 @@ export function useInventoryApp() {
 
   const api = useMemo(
     () =>
-      createApiClient(token, clearSession, () => {
+      createApiClient(clearSession, () => {
         setSubscriptionExpired(true)
         setPage('settings')
         setSettingsTab('plan')
       }),
-    [token, clearSession],
+    [clearSession],
   )
 
   const loadBasics = useCallback(async () => {
@@ -239,7 +236,7 @@ export function useInventoryApp() {
 
   const loadPage = useCallback(
     async (nextPage = page, options: { append?: boolean; pageNum?: number } = {}) => {
-      if (!token) return
+      if (!user) return
       const { append = false, pageNum = append ? undefined : 1 } = options
       setLoading(true)
 
@@ -316,7 +313,7 @@ export function useInventoryApp() {
       reportFrom,
       reportTo,
       salesMeta.page,
-      token,
+      user,
     ],
   )
 
@@ -336,20 +333,11 @@ export function useInventoryApp() {
   }, [api])
 
   const refreshUser = useCallback(async (): Promise<User | null> => {
-    const activeToken = localStorage.getItem('gitinventory_token')
-    if (!activeToken) return null
     try {
-      const response = await fetch('/api/auth/me', {
-        headers: {
-          Accept: 'application/json',
-          Authorization: `Bearer ${activeToken}`,
-        },
-      })
-      const body = await response.json()
-      if (response.ok && body.user) {
-        setUser(body.user as User)
-        localStorage.setItem('gitinventory_user', JSON.stringify(body.user))
-        const tenant = body.user.tenant as User['tenant']
+      const body = await api<{ user: User }>('auth/me')
+      if (body.user) {
+        setUser(body.user)
+        const tenant = body.user.tenant
         const active =
           tenant?.on_trial ||
           tenant?.has_active_subscription ||
@@ -357,13 +345,21 @@ export function useInventoryApp() {
         if (active || tenant?.has_active_subscription) {
           setSubscriptionExpired(false)
         }
-        return body.user as User
+        return body.user
       }
     } catch {
-      // login flow sets user directly
+      clearSession()
     }
     return null
-  }, [])
+  }, [api, clearSession])
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      void refreshUser().finally(() => setAuthReady(true))
+    }, 0)
+
+    return () => window.clearTimeout(timer)
+  }, [refreshUser])
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
@@ -377,7 +373,7 @@ export function useInventoryApp() {
     if (params.get('verified') === '1') {
       notify('Email verified. Welcome aboard.')
       window.history.replaceState({}, '', window.location.pathname)
-      if (token) void refreshUser()
+      if (user) void refreshUser()
     } else if (params.get('verified') === '0') {
       notify('Verification link is invalid or expired.')
       window.history.replaceState({}, '', window.location.pathname)
@@ -386,7 +382,7 @@ export function useInventoryApp() {
   }, [])
 
   useEffect(() => {
-    if (!token) return
+    if (!user) return
 
     const params = new URLSearchParams(window.location.search)
     if (params.get('billing') === 'success') {
@@ -426,28 +422,28 @@ export function useInventoryApp() {
 
     return () => window.clearTimeout(timer)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [token])
+  }, [user])
 
   useEffect(() => {
-    if (!token || page !== 'settings') return
+    if (!user || page !== 'settings') return
     void loadPage('settings')
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page, subscriptionExpired])
 
   useEffect(() => {
-    if (!token || page !== 'products') return
+    if (!user || page !== 'products') return
     void loadProducts(1, false)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [debouncedSearch])
 
   useEffect(() => {
-    if (!token || page !== 'sales') return
+    if (!user || page !== 'sales') return
     void loadSales(1, false)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [saleFilters])
 
   useEffect(() => {
-    if (!token || page !== 'purchases') return
+    if (!user || page !== 'purchases') return
     void loadPurchases(1, false)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [purchaseFilters])
@@ -459,14 +455,11 @@ export function useInventoryApp() {
 
     try {
       const payload = normalizePayload(event.currentTarget)
-      const response = await api<{ token: string; user: User; message?: string }>(`auth/${authMode}`, {
+      const response = await api<{ user: User; message?: string }>(`auth/${authMode}`, {
         method: 'POST',
         body: JSON.stringify(payload),
       })
 
-      localStorage.setItem('gitinventory_token', response.token)
-      localStorage.setItem('gitinventory_user', JSON.stringify(response.user))
-      setToken(response.token)
       setUser(response.user)
       notify(response.message || 'Welcome back.')
     } catch (error) {
@@ -522,7 +515,7 @@ export function useInventoryApp() {
   }
 
   const logout = () => {
-    if (token) void api('auth/logout', { method: 'POST' }).catch(() => undefined)
+    if (user) void api('auth/logout', { method: 'POST' }).catch(() => undefined)
     clearSession()
   }
 
@@ -539,12 +532,11 @@ export function useInventoryApp() {
   }
 
   const downloadProductImportTemplate = async () => {
-    if (!token) return
+    if (!user) return
     try {
-      await downloadWithToken(
+      await downloadWithSession(
         'products/import/template',
         'product-import-template.csv',
-        token,
         'text/csv',
       )
       notify('Template downloaded.')
@@ -554,16 +546,17 @@ export function useInventoryApp() {
   }
 
   const importProductsCsv = async (file: File) => {
-    if (!token) return
+    if (!user) return
     setImportingProducts(true)
     try {
       const form = new FormData()
       form.append('file', file)
       const response = await fetch('/api/products/import', {
         method: 'POST',
+        credentials: 'include',
         headers: {
           Accept: 'application/json',
-          Authorization: `Bearer ${token}`,
+          ...(await csrfHeaders()),
         },
         body: form,
       })
@@ -682,13 +675,12 @@ export function useInventoryApp() {
   }
 
   const exportFinancialReport = async () => {
-    if (!token) return
+    if (!user) return
 
     try {
-      await downloadWithToken(
+      await downloadWithSession(
         `reports/financial/export?date_from=${reportFrom}&date_to=${reportTo}`,
         `financial-report-${reportFrom}-to-${reportTo}.csv`,
-        token,
         'text/csv',
       )
       notify('Report downloaded.')
@@ -698,13 +690,12 @@ export function useInventoryApp() {
   }
 
   const exportFinancialReportPdf = async () => {
-    if (!token) return
+    if (!user) return
 
     try {
-      await downloadWithToken(
+      await downloadWithSession(
         `reports/financial/export/pdf?date_from=${reportFrom}&date_to=${reportTo}`,
         `financial-report-${reportFrom}-to-${reportTo}.pdf`,
-        token,
       )
       notify('PDF report downloaded.')
     } catch (error) {
@@ -713,11 +704,11 @@ export function useInventoryApp() {
   }
 
   const downloadSalePdf = async (saleId: number, invoiceNumber: string) => {
-    if (!token) return
+    if (!user) return
 
     try {
       const safeName = invoiceNumber.replace(/[^A-Za-z0-9\-_]/g, '-')
-      await downloadWithToken(`sales/${saleId}/pdf`, `receipt-${safeName}.pdf`, token)
+      await downloadWithSession(`sales/${saleId}/pdf`, `receipt-${safeName}.pdf`)
       notify('Receipt downloaded.')
     } catch (error) {
       notify(error instanceof Error ? error.message : 'Receipt download failed.')
@@ -725,10 +716,10 @@ export function useInventoryApp() {
   }
 
   const downloadProductLabelPdf = async (productId: number) => {
-    if (!token) return
+    if (!user) return
 
     try {
-      await downloadWithToken(`products/${productId}/label`, `label-${productId}.pdf`, token)
+      await downloadWithSession(`products/${productId}/label`, `label-${productId}.pdf`)
       notify('Label PDF downloaded.')
     } catch (error) {
       notify(error instanceof Error ? error.message : 'Label download failed.')
@@ -779,16 +770,15 @@ export function useInventoryApp() {
   }
 
   const exportActivityLog = async (from?: string, to?: string) => {
-    if (!token) return
+    if (!user) return
     try {
       const query = new URLSearchParams()
       if (from) query.set('from', from)
       if (to) query.set('to', to)
       const suffix = query.toString() ? `?${query.toString()}` : ''
-      await downloadWithToken(
+      await downloadWithSession(
         `settings/activity/export${suffix}`,
         `activity-log-${new Date().toISOString().slice(0, 10)}.csv`,
-        token,
         'text/csv',
       )
       notify('Activity log downloaded.')
@@ -894,7 +884,7 @@ export function useInventoryApp() {
   }
 
   return {
-    token,
+    authReady,
     user,
     authMode,
     setAuthMode,

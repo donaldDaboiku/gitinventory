@@ -1,17 +1,31 @@
-export function createApiClient(
-  token: string | null,
-  onUnauthorized: () => void,
-  onSubscriptionExpired?: () => void,
-) {
+function readCookie(name: string) {
+  return document.cookie
+    .split('; ')
+    .find((cookie) => cookie.startsWith(`${name}=`))
+    ?.slice(name.length + 1)
+}
+
+export async function csrfHeaders(): Promise<Record<string, string>> {
+  await fetch('/sanctum/csrf-cookie', { credentials: 'include' })
+  const token = readCookie('XSRF-TOKEN')
+
+  return token ? { 'X-XSRF-TOKEN': decodeURIComponent(token) } : {}
+}
+
+export function createApiClient(onUnauthorized: () => void, onSubscriptionExpired?: () => void) {
   return async function api<T>(path: string, options: RequestInit = {}): Promise<T> {
+    const method = options.method?.toUpperCase() ?? 'GET'
+    const csrf = ['POST', 'PUT', 'PATCH', 'DELETE'].includes(method) ? await csrfHeaders() : {}
+    const headers = new Headers({
+      Accept: 'application/json',
+      'Content-Type': 'application/json',
+      ...csrf,
+    })
+    new Headers(options.headers).forEach((value, key) => headers.set(key, value))
     const response = await fetch(`/api/${path}`, {
       ...options,
-      headers: {
-        Accept: 'application/json',
-        'Content-Type': 'application/json',
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        ...(options.headers || {}),
-      },
+      credentials: 'include',
+      headers,
     })
     const text = await response.text()
 
@@ -24,7 +38,7 @@ export function createApiClient(
       }
     }
 
-    if (response.status === 401 && token) {
+    if (response.status === 401) {
       onUnauthorized()
       throw new Error('Session expired. Please sign in again.')
     }

@@ -33,7 +33,11 @@ function App() {
     }
   }, [app.authMode])
 
-  if (!app.token) {
+  if (!app.authReady) {
+    return null
+  }
+
+  if (!app.user) {
     if (showLanding) {
       return (
         <LandingPage
