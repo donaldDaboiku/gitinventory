@@ -156,7 +156,8 @@ Notable test files:
 | `ActivityLogExportTest` | Settings audit CSV export |
 | `ProductImportTest` | CSV template + bulk product import |
 | `LowStockAlertTest` | Scheduled low-stock digest command |
-| `WelcomeMailTest` | Registration email |
+| `DashboardCacheTest` | Dashboard metrics cached per tenant |
+| `WelcomeMailTest` | Registration email queued |
 
 Frontend:
 
@@ -165,6 +166,17 @@ cd gitinventory-frontend
 npm run build
 npm run lint
 ```
+
+Playwright (API must be up with the demo user seeded — `DemoUserSeeder`):
+
+```powershell
+cd gitinventory-frontend
+npx playwright install chromium
+$env:VITE_API_BASE_URL="http://127.0.0.1:8001"
+npm run test:e2e
+```
+
+Covers login, product CSV import, and a POS sale. Vite is started on port **5173** (or reused if already running). GitHub Actions runs the same suite against a fresh SQLite API.
 
 ---
 
@@ -200,14 +212,12 @@ Leave `PAYSTACK_SECRET_KEY` empty. Checkout returns `demo_mode: true`; frontend 
 
 ### Engineering
 
-- OpenAPI YAML generated from routes
-- Queue welcome / verification / password-reset mail for faster API responses
-- Redis cache for dashboard metrics
-- E2E tests (Playwright) for login, CSV import, and POS sale
+- Sanctum cookie SPA auth (httpOnly) if the web app is the only client
+- Event-based dashboard cache invalidation (today: 60s TTL)
 
 ### Operations
 
-- Staging environment with Paystack test mode
+- Live Paystack webhook on a TLS host
 - Postgres backup automation
 - Error tracking (Sentry) and uptime monitoring
 - Rate limiting tuning per tenant

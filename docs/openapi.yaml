@@ -1,0 +1,477 @@
+openapi: 3.0.3
+info:
+  title: GITInventory API
+  version: 1.0.0
+  description: |
+    Multi-tenant inventory, sales, and purchasing API.
+    Authenticate with Sanctum: `Authorization: Bearer {token}`.
+    Business routes require a verified email and an active trial or subscription.
+  contact:
+    name: GITInventory
+servers:
+  - url: '{baseUrl}/api'
+    variables:
+      baseUrl:
+        default: http://127.0.0.1:8001
+        description: Laravel APP_URL (no trailing slash)
+
+tags:
+  - name: Auth
+  - name: Billing
+  - name: Dashboard
+  - name: Products
+  - name: Stock
+  - name: Sales
+  - name: Purchases
+  - name: Settings
+
+security:
+  - bearerAuth: []
+
+paths:
+  /auth/register:
+    post:
+      tags: [Auth]
+      security: []
+      summary: Register a business (14-day trial)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [business_name, name, email, password, password_confirmation]
+              properties:
+                business_name: { type: string }
+                name: { type: string }
+                email: { type: string, format: email }
+                phone: { type: string, nullable: true }
+                password: { type: string, minLength: 8 }
+                password_confirmation: { type: string }
+      responses:
+        '201':
+          description: Created; welcome + verification emails queued
+        '422':
+          description: Validation error
+
+  /auth/login:
+    post:
+      tags: [Auth]
+      security: []
+      summary: Sign in
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email: { type: string, format: email }
+                password: { type: string }
+      responses:
+        '200':
+          description: Token and user
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message: { type: string }
+                  token: { type: string }
+                  user: { $ref: '#/components/schemas/User' }
+        '422':
+          description: Invalid credentials
+
+  /auth/logout:
+    post:
+      tags: [Auth]
+      summary: Revoke current token
+      responses:
+        '200': { description: Logged out }
+
+  /auth/me:
+    get:
+      tags: [Auth]
+      summary: Current user, roles, and permissions
+      responses:
+        '200':
+          description: User payload
+
+  /auth/forgot-password:
+    post:
+      tags: [Auth]
+      security: []
+      summary: Request password reset (always 200)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email]
+              properties:
+                email: { type: string, format: email }
+      responses:
+        '200': { description: Generic success }
+
+  /auth/reset-password:
+    post:
+      tags: [Auth]
+      security: []
+      summary: Set a new password
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, token, password, password_confirmation]
+              properties:
+                email: { type: string, format: email }
+                token: { type: string }
+                password: { type: string }
+                password_confirmation: { type: string }
+      responses:
+        '200': { description: Password updated }
+        '422': { description: Invalid token }
+
+  /auth/email/verify/{id}/{hash}:
+    get:
+      tags: [Auth]
+      security: []
+      summary: Signed email verification (redirects to frontend)
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer }
+        - in: path
+          name: hash
+          required: true
+          schema: { type: string }
+        - in: query
+          name: expires
+          schema: { type: integer }
+        - in: query
+          name: signature
+          schema: { type: string }
+      responses:
+        '302': { description: Redirect }
+
+  /auth/email/resend:
+    post:
+      tags: [Auth]
+      summary: Resend verification email
+      responses:
+        '200': { description: Queued or already verified }
+
+  /billing/webhook:
+    post:
+      tags: [Billing]
+      security: []
+      summary: Paystack webhook
+      parameters:
+        - in: header
+          name: X-Paystack-Signature
+          required: true
+          schema: { type: string }
+      responses:
+        '200': { description: Accepted }
+
+  /billing/plans:
+    get:
+      tags: [Billing]
+      summary: Subscription plans
+      responses:
+        '200': { description: Plan list }
+
+  /billing/status:
+    get:
+      tags: [Billing]
+      summary: Trial and subscription status
+      responses:
+        '200': { description: Billing status }
+
+  /billing/checkout:
+    post:
+      tags: [Billing]
+      summary: Start Paystack checkout (or demo mode)
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [plan]
+              properties:
+                plan: { type: string, enum: [starter, business] }
+      responses:
+        '200': { description: authorization_url or demo_mode }
+
+  /billing/confirm-demo:
+    post:
+      tags: [Billing]
+      summary: Activate demo subscription when Paystack keys are empty
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [plan]
+              properties:
+                plan: { type: string }
+                reference: { type: string }
+      responses:
+        '200': { description: Subscription activated }
+
+  /dashboard:
+    get:
+      tags: [Dashboard]
+      summary: Metrics and charts (cached ~60s per tenant)
+      responses:
+        '200': { description: Dashboard payload }
+        '402': { $ref: '#/components/responses/SubscriptionExpired' }
+        '403': { $ref: '#/components/responses/EmailUnverified' }
+
+  /products:
+    get:
+      tags: [Products]
+      summary: Paginated product list
+      parameters:
+        - in: query
+          name: search
+          schema: { type: string }
+        - in: query
+          name: low_stock
+          schema: { type: boolean }
+        - in: query
+          name: per_page
+          schema: { type: integer }
+      responses:
+        '200': { description: Paginated products }
+    post:
+      tags: [Products]
+      summary: Create product
+      responses:
+        '201': { description: Created }
+
+  /products/{id}:
+    get:
+      tags: [Products]
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      responses:
+        '200': { description: Product }
+        '404': { description: Not found }
+    put:
+      tags: [Products]
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      responses:
+        '200': { description: Updated }
+    delete:
+      tags: [Products]
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      responses:
+        '200': { description: Deleted }
+
+  /products/lookup:
+    get:
+      tags: [Products]
+      summary: Lookup by barcode or SKU
+      parameters:
+        - in: query
+          name: code
+          required: true
+          schema: { type: string }
+      responses:
+        '200': { description: Product }
+        '404': { description: Not found }
+
+  /products/import:
+    post:
+      tags: [Products]
+      summary: CSV import (max 200 rows)
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file: { type: string, format: binary }
+      responses:
+        '201': { description: Imported with optional row errors }
+        '422': { description: Invalid file }
+
+  /products/import/template:
+    get:
+      tags: [Products]
+      summary: CSV template
+      responses:
+        '200':
+          description: CSV
+          content:
+            text/csv: {}
+
+  /stock/movements:
+    get:
+      tags: [Stock]
+      responses:
+        '200': { description: Paginated movements }
+
+  /stock/in:
+    post:
+      tags: [Stock]
+      responses:
+        '200': { description: Stock in recorded }
+
+  /stock/out:
+    post:
+      tags: [Stock]
+      responses:
+        '200': { description: Stock out recorded }
+
+  /stock/adjust:
+    post:
+      tags: [Stock]
+      responses:
+        '200': { description: Adjustment recorded }
+
+  /sales:
+    get:
+      tags: [Sales]
+      responses:
+        '200': { description: Paginated sales }
+    post:
+      tags: [Sales]
+      summary: Create sale (reduces stock)
+      responses:
+        '201': { description: Created }
+
+  /sales/{id}:
+    get:
+      tags: [Sales]
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      responses:
+        '200': { description: Sale with lines }
+
+  /sales/{id}/pdf:
+    get:
+      tags: [Sales]
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      responses:
+        '200':
+          description: Receipt PDF
+          content:
+            application/pdf: {}
+
+  /purchases:
+    get:
+      tags: [Purchases]
+      responses:
+        '200': { description: Paginated purchases }
+    post:
+      tags: [Purchases]
+      responses:
+        '201': { description: Created }
+
+  /settings:
+    get:
+      tags: [Settings]
+      summary: Available even when subscription expired
+      responses:
+        '200': { description: Tenant settings }
+    put:
+      tags: [Settings]
+      responses:
+        '200': { description: Updated }
+
+  /settings/activity/export:
+    get:
+      tags: [Settings]
+      parameters:
+        - in: query
+          name: from
+          schema: { type: string, format: date }
+        - in: query
+          name: to
+          schema: { type: string, format: date }
+      responses:
+        '200':
+          description: Activity CSV
+          content:
+            text/csv: {}
+
+  /settings/users:
+    get:
+      tags: [Settings]
+      responses:
+        '200': { description: Team members }
+    post:
+      tags: [Settings]
+      responses:
+        '201': { description: Invited }
+
+  /reports/financial:
+    get:
+      tags: [Dashboard]
+      parameters:
+        - in: query
+          name: from
+          schema: { type: string, format: date }
+        - in: query
+          name: to
+          schema: { type: string, format: date }
+      responses:
+        '200': { description: Financial summary }
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: Sanctum
+
+  parameters:
+    Id:
+      in: path
+      name: id
+      required: true
+      schema: { type: integer }
+
+  schemas:
+    User:
+      type: object
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        email: { type: string }
+        email_verified_at: { type: string, nullable: true }
+        roles:
+          type: array
+          items: { type: string }
+
+  responses:
+    SubscriptionExpired:
+      description: Trial/subscription ended
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              message: { type: string }
+              code: { type: string, example: subscription_expired }
+    EmailUnverified:
+      description: Verify email first
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              message: { type: string }
+              code: { type: string, example: email_not_verified }

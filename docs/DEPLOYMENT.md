@@ -9,7 +9,9 @@ For a dry-run first, use [STAGING.md](STAGING.md).
 ## Architecture
 
 ```
-Browser → frontend nginx (:80)
+Browser → Caddy (:443)               # docker-compose.tls.yml
+              ↓ HTTP
+          frontend nginx (:80)
               ↓ /api/*  and  /up
           Laravel backend (:8000)
               ↓
@@ -17,6 +19,8 @@ Browser → frontend nginx (:80)
               ↑
           queue worker + scheduler
 ```
+
+Without the TLS overlay, the browser talks to frontend nginx on `FRONTEND_PORT` (80 by default).
 
 Background processes:
 
@@ -83,9 +87,36 @@ https://api.yourdomain.com/api/billing/webhook
 
 Verify `x-paystack-signature`. Event: **charge.success**.
 
-### 5. TLS
+### 5. TLS (Caddy)
 
-Terminate TLS on Caddy, nginx, or a cloud load balancer in front of `FRONTEND_PORT`. Backend trusts `X-Forwarded-*` proxies.
+Caddy terminates HTTPS and reverse-proxies the frontend container (which already proxies `/api` to Laravel). Open ports **80** and **443**. Let's Encrypt needs a public DNS name pointing at the host.
+
+In `.env` set:
+
+```ini
+FRONTEND_PORT=8080
+DOMAIN=app.yourdomain.com
+ACME_EMAIL=admin@yourdomain.com
+APP_URL=https://app.yourdomain.com
+FRONTEND_URL=https://app.yourdomain.com
+BILLING_CALLBACK_URL=https://app.yourdomain.com/settings?billing=success
+```
+
+`FRONTEND_PORT=8080` keeps SPA nginx off host port 80 so Caddy can bind 80/443. Compose **appends** ports; you cannot unpublish `80:80` from the overlay.
+
+```powershell
+docker compose -f docker-compose.yml -f docker-compose.tls.yml --env-file .env up --build -d
+```
+
+Local dry-run (Caddy internal CA — browsers will warn):
+
+```powershell
+$env:CADDYFILE="./deploy/Caddyfile.internal"
+$env:DOMAIN="localhost"
+docker compose -f docker-compose.yml -f docker-compose.tls.yml --env-file .env.staging up -d
+```
+
+Paystack webhook then becomes `https://app.yourdomain.com/api/billing/webhook` (same origin as the SPA). A cloud load balancer in front of `FRONTEND_PORT` still works if you skip this overlay. Backend already trusts `X-Forwarded-*` proxies.
 
 ---
 
@@ -166,7 +197,7 @@ Empty `PAYSTACK_SECRET_KEY` → **demo mode** checkout.
 - Dev / early staging: `MAIL_MAILER=log`
 - Production: SMTP or Resend/Postmark
 
-Emails: welcome, verify, password reset, trial ending, low-stock digest.
+Emails (queued — run `php artisan queue:work` or the Docker `queue` service): welcome, verify, password reset, trial ending, low-stock digest.
 
 ---
 

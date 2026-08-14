@@ -5,6 +5,8 @@
 #   docker compose up --build -d
 # Staging ports/overrides:
 #   docker compose -f docker-compose.yml -f docker-compose.staging.yml up --build -d
+# TLS (Caddy on 80/443 — set FRONTEND_PORT=8080):
+#   docker compose -f docker-compose.yml -f docker-compose.tls.yml --env-file .env up -d
 
 services:
   postgres:

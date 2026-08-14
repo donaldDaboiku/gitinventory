@@ -48,10 +48,10 @@ Limit: 200 rows. Units: `piece`, `kg`, `litre`, `box`, `pack`, `dozen`, `carton`
 
 Download template: `GET /products/import/template`
 
+A machine-readable spec lives in [openapi.yaml](openapi.yaml). Import it into Postman or Swagger UI.
+
 ## Postman quick start
 
-1. Create environment variables `baseUrl` and `token`.
+1. Import [openapi.yaml](openapi.yaml) or create environment variables `baseUrl` and `token`.
 2. Login → set `token` from response.
 3. Call protected routes with Bearer token.
-
-A machine-readable OpenAPI file can be generated later from these routes; this document is the source of truth for integrators today.

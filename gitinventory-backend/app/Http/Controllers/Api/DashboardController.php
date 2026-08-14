@@ -3,27 +3,41 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Models\Customer;
 use App\Models\Product;
-use App\Models\Purchase;
 use App\Models\Sale;
-use App\Models\Supplier;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 
 class DashboardController extends Controller
 {
+    public static function cacheKey(int $tenantId): string
+    {
+        return 'dashboard:'.$tenantId.':'.now()->toDateString();
+    }
+
     public function __invoke(Request $request): JsonResponse
     {
-        $tenantId = $request->user()->tenant_id;
-        $today    = now()->toDateString();
-        $month    = now()->startOfMonth()->toDateString();
+        $tenantId = (int) $request->user()->tenant_id;
 
-        // Key metrics
-        $totalProducts   = Product::where('tenant_id', $tenantId)->where('is_active', true)->count();
-        $lowStockCount   = Product::where('tenant_id', $tenantId)->whereColumn('quantity', '<=', 'min_stock_level')->count();
-        $expiringSoon    = Product::where('tenant_id', $tenantId)
+        // ponytail: 60s TTL, no event invalidation — bump TTL or forget cacheKey() after sales/stock if dashboards go stale
+        $payload = Cache::remember(self::cacheKey($tenantId), 60, fn () => $this->metrics($tenantId));
+
+        return response()->json($payload);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function metrics(int $tenantId): array
+    {
+        $today = now()->toDateString();
+        $month = now()->startOfMonth()->toDateString();
+
+        $totalProducts = Product::where('tenant_id', $tenantId)->where('is_active', true)->count();
+        $lowStockCount = Product::where('tenant_id', $tenantId)->whereColumn('quantity', '<=', 'min_stock_level')->count();
+        $expiringSoon = Product::where('tenant_id', $tenantId)
             ->whereNotNull('expiry_date')
             ->where('expiry_date', '<=', now()->addDays(30))
             ->where('expiry_date', '>=', now())
@@ -41,7 +55,6 @@ class DashboardController extends Controller
             ->selectRaw('COUNT(*) as count, COALESCE(SUM(total_amount), 0) as revenue, COALESCE(SUM(total_amount - discount_amount), 0) as net')
             ->first();
 
-        // Monthly profit estimate
         $monthProfit = DB::table('sale_items')
             ->join('sales', 'sales.id', '=', 'sale_items.sale_id')
             ->where('sales.tenant_id', $tenantId)
@@ -50,13 +63,11 @@ class DashboardController extends Controller
             ->selectRaw('COALESCE(SUM((sale_items.unit_price - sale_items.cost_price) * sale_items.quantity), 0) as profit')
             ->value('profit');
 
-        // Pending receivables
-        $pendingReceivables = Sale::where('tenant_id' , $tenantId)
+        $pendingReceivables = Sale::where('tenant_id', $tenantId)
             ->where(fn ($q) => $q->where('payment_status', 'partial')
-                                 ->orWhere('payment_status', 'pending'))
+                ->orWhere('payment_status', 'pending'))
             ->sum('amount_due');
-                         
-            // Last 7 days sales chart
+
         $salesChart = Sale::where('tenant_id', $tenantId)
             ->where('status', 'completed')
             ->where('sale_date', '>=', now()->subDays(6)->toDateString())
@@ -65,7 +76,6 @@ class DashboardController extends Controller
             ->orderBy('sale_date')
             ->get();
 
-        // Top 5 selling products this month
         $topProducts = DB::table('sale_items')
             ->join('sales', 'sales.id', '=', 'sale_items.sale_id')
             ->join('products', 'products.id', '=', 'sale_items.product_id')
@@ -78,7 +88,7 @@ class DashboardController extends Controller
             ->limit(5)
             ->get();
 
-        return response()->json([
+        return [
             'metrics' => [
                 'total_products'      => $totalProducts,
                 'low_stock_count'     => $lowStockCount,
@@ -98,6 +108,6 @@ class DashboardController extends Controller
                 'sales_last_7_days' => $salesChart,
                 'top_products'      => $topProducts,
             ],
-        ]);
+        ];
     }
 }

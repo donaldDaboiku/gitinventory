@@ -52,7 +52,7 @@ class LowStockAlertTest extends TestCase
 
         $this->artisan('inventory:send-low-stock-alerts')->assertSuccessful();
 
-        Mail::assertSent(LowStockAlertMail::class, fn (LowStockAlertMail $mail) => $mail->hasTo('owner@stockalert.test'));
+        Mail::assertQueued(LowStockAlertMail::class, fn (LowStockAlertMail $mail) => $mail->hasTo('owner@stockalert.test'));
     }
 
     public function test_low_stock_command_skips_when_stock_is_healthy(): void
@@ -84,6 +84,6 @@ class LowStockAlertTest extends TestCase
 
         $this->artisan('inventory:send-low-stock-alerts')->assertSuccessful();
 
-        Mail::assertNothingSent();
+        Mail::assertNothingOutgoing();
     }
 }

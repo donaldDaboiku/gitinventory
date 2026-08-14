@@ -1,3 +1,5 @@
+/database/*.sqlite
+/database/*.sqlite-journal
 *.log
 .DS_Store
 .env

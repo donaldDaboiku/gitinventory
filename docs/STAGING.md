@@ -39,7 +39,7 @@ Then mark the demo email verified if needed, or use **Create account** and verif
 Set in `.env.staging`:
 
 - `APP_URL` / `FRONTEND_URL` / `BILLING_CALLBACK_URL` to staging hostnames
-- Put TLS (Caddy/nginx/cloud LB) in front of the frontend port
+- TLS: Caddy overlay (`docker-compose.tls.yml` + `CADDYFILE=./deploy/Caddyfile.internal`) or a cloud LB in front of port 8080 — see [DEPLOYMENT.md](DEPLOYMENT.md#5-tls-caddy)
 - Paystack webhook: `https://staging-api…/api/billing/webhook`
 
 ## Smoke tests

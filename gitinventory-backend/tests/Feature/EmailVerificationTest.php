@@ -35,7 +35,7 @@ class EmailVerificationTest extends TestCase
         ])->assertCreated()
             ->assertJsonPath('user.email_verified_at', null);
 
-        Mail::assertSent(VerifyEmailMail::class, fn (VerifyEmailMail $mail) => $mail->hasTo('owner@verify.test'));
+        Mail::assertQueued(VerifyEmailMail::class, fn (VerifyEmailMail $mail) => $mail->hasTo('owner@verify.test'));
     }
 
     public function test_unverified_user_cannot_access_dashboard(): void
@@ -71,7 +71,7 @@ class EmailVerificationTest extends TestCase
         $this->postJson('/api/auth/email/resend')
             ->assertOk();
 
-        Mail::assertSent(VerifyEmailMail::class);
+        Mail::assertQueued(VerifyEmailMail::class);
     }
 
     private function unverifiedOwner(): User

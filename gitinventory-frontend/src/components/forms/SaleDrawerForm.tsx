@@ -31,8 +31,8 @@ export function SaleDrawerForm({
   const [scanning, setScanning] = useState(false)
   const scanRef = useRef<HTMLInputElement>(null)
 
-  const handleScan = async (event: FormEvent) => {
-    event.preventDefault()
+  const handleScan = async (event?: { preventDefault: () => void }) => {
+    event?.preventDefault()
     const code = scanCode.trim()
     if (!code) return
 
@@ -67,20 +67,26 @@ export function SaleDrawerForm({
           <h3>Scan barcode</h3>
           <span className="tiny">USB scanner or type code + Enter</span>
         </div>
-        <form className="toolbar-left scan-form" onSubmit={handleScan}>
+        <div className="toolbar-left scan-form">
           <input
             ref={scanRef}
             className="input search pos-scan-input"
             placeholder="Scan barcode or SKU"
             value={scanCode}
             onChange={(event) => setScanCode(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter') {
+                event.preventDefault()
+                void handleScan(event)
+              }
+            }}
             autoComplete="off"
             autoFocus
           />
-          <button className="btn primary pos-tap" type="submit" disabled={scanning || !scanCode.trim()}>
+          <button className="btn primary pos-tap" type="button" onClick={handleScan} disabled={scanning || !scanCode.trim()}>
             {scanning ? 'Looking up…' : 'Add item'}
           </button>
-        </form>
+        </div>
         {scanError && <p className="tiny scan-error">{scanError}</p>}
       </section>
 

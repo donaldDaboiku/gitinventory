@@ -32,7 +32,7 @@ class PasswordResetTest extends TestCase
             'email' => $user->email,
         ])->assertOk();
 
-        Mail::assertSent(PasswordResetMail::class, fn (PasswordResetMail $mail) => $mail->hasTo($user->email));
+        Mail::assertQueued(PasswordResetMail::class, fn (PasswordResetMail $mail) => $mail->hasTo($user->email));
     }
 
     public function test_reset_password_updates_credentials(): void

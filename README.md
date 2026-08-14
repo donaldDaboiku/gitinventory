@@ -86,6 +86,7 @@ Or register a new account from the app (**Create account** → 14-day trial star
 | [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) | DevOps / hosting | Docker Compose, env vars, Paystack, mail, scheduler |
 | [docs/STAGING.md](docs/STAGING.md) | DevOps | Staging checklist before production |
 | [docs/API.md](docs/API.md) | Integrators | REST endpoint reference |
+| [docs/openapi.yaml](docs/openapi.yaml) | Integrators | OpenAPI 3 spec (Postman / Swagger) |
 | [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) | Developers | Local setup, tests, project structure, API notes |
 | [gitinventory-backend/HERD_SETUP.md](gitinventory-backend/HERD_SETUP.md) | macOS Herd users | Laravel Herd + PostgreSQL setup |
 
@@ -112,9 +113,10 @@ php artisan test
 cd gitinventory-frontend
 npm run build
 npm run lint
+npm run test:e2e
 ```
 
-GitHub Actions runs PHPUnit and the frontend build on every push/PR (see `.github/workflows/ci.yml`).
+GitHub Actions runs PHPUnit, the frontend build, and Playwright E2E on every push/PR (see `.github/workflows/ci.yml`). Playwright needs the API running locally with `demo@gitinventory.test` / `Password1` — see [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md#testing).
 
 ## Production deployment (overview)
 
@@ -133,6 +135,7 @@ App: http://localhost:8080 — see [docs/STAGING.md](docs/STAGING.md).
 1. Copy `.env.production.example` to `.env` and set `DB_PASSWORD`, mail, live Paystack keys, URLs.
 2. Run `.\scripts\gen-app-key.ps1`.
 3. `docker compose --env-file .env up --build -d`.
+4. HTTPS: set `DOMAIN` / `ACME_EMAIL`, `FRONTEND_PORT=8080`, then `docker compose -f docker-compose.yml -f docker-compose.tls.yml --env-file .env up -d`.
 
 Full steps: [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)
 
@@ -141,10 +144,9 @@ Full steps: [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)
 These are sensible follow-ups after the current release:
 
 1. **Run staging smoke tests** — [docs/STAGING.md](docs/STAGING.md) checklist, then promote.
-2. **TLS + live Paystack webhook** on the production host.
+2. **Live Paystack webhook** on the TLS host (`https://your.domain/api/billing/webhook`).
 3. **Nightly Postgres backups** — [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md#backups).
-4. **OpenAPI codegen** — from [docs/API.md](docs/API.md) / routes.
-5. **Queued mail + Sanctum cookie SPA auth** — if you want faster APIs and httpOnly sessions.
+4. **Sanctum cookie SPA auth** — httpOnly sessions if this SPA is the only client.
 
 See [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md#recommended-next-work) for technical backlog items.
 

@@ -1,0 +1,32 @@
+# TLS overlay — Caddy terminates HTTPS in front of the SPA nginx proxy.
+#
+# Production (Let's Encrypt):
+#   Set DOMAIN, ACME_EMAIL, APP_URL, FRONTEND_URL to https://your.host
+#   Set FRONTEND_PORT=8080 so Caddy can bind host 80/443
+#   docker compose -f docker-compose.yml -f docker-compose.tls.yml --env-file .env up --build -d
+#
+# Local / staging dry-run (internal CA — browsers will warn):
+#   CADDYFILE=./deploy/Caddyfile.internal DOMAIN=localhost FRONTEND_PORT=8080 \
+#   docker compose -f docker-compose.yml -f docker-compose.tls.yml --env-file .env.staging up -d
+
+services:
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - '80:80'
+      - '443:443'
+      - '443:443/udp'
+    environment:
+      DOMAIN: ${DOMAIN:-localhost}
+      ACME_EMAIL: ${ACME_EMAIL:-admin@localhost}
+    volumes:
+      - ${CADDYFILE:-./deploy/Caddyfile}:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - frontend
+
+volumes:
+  caddy_data:
+  caddy_config:

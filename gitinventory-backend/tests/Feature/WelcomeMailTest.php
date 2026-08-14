@@ -32,6 +32,6 @@ class WelcomeMailTest extends TestCase
             'password_confirmation' => 'Password1',
         ])->assertCreated();
 
-        Mail::assertSent(WelcomeMail::class, fn (WelcomeMail $mail) => $mail->hasTo('jane@mailtest.test'));
+        Mail::assertQueued(WelcomeMail::class, fn (WelcomeMail $mail) => $mail->hasTo('jane@mailtest.test'));
     }
 }
