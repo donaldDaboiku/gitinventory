@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Product;
 use App\Models\StockMovement;
+use App\Services\DashboardCache;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -25,7 +26,7 @@ class StockController extends Controller
             'note'           => ['nullable', 'string'],
         ]);
 
-        return DB::transaction(function () use ($validated, $request) {
+        $response = DB::transaction(function () use ($validated, $request) {
             $product = Product::where('id', $validated['product_id'])
                 ->where('tenant_id', $request->user()->tenant_id)
                 ->lockForUpdate()
@@ -56,6 +57,10 @@ class StockController extends Controller
                 'quantity_after'  => $product->fresh()->quantity,
             ]);
         });
+
+        DashboardCache::forget((int) $tenantId);
+
+        return $response;
     }
 
     public function stockOut(Request $request): JsonResponse
@@ -70,7 +75,7 @@ class StockController extends Controller
             'note'           => ['nullable', 'string'],
         ]);
 
-        return DB::transaction(function () use ($validated, $request) {
+        $response = DB::transaction(function () use ($validated, $request) {
             $product = Product::where('id', $validated['product_id'])
                 ->where('tenant_id', $request->user()->tenant_id)
                 ->lockForUpdate()
@@ -106,6 +111,12 @@ class StockController extends Controller
                 'quantity_after'  => $product->fresh()->quantity,
             ]);
         });
+
+        if ($response->isSuccessful()) {
+            DashboardCache::forget((int) $tenantId);
+        }
+
+        return $response;
     }
 
     public function adjust(Request $request): JsonResponse
@@ -118,7 +129,7 @@ class StockController extends Controller
             'note'            => ['required', 'string', 'max:500'],
         ]);
 
-        return DB::transaction(function () use ($validated, $request) {
+        $response = DB::transaction(function () use ($validated, $request) {
             $product = Product::where('id', $validated['product_id'])
                 ->where('tenant_id', $request->user()->tenant_id)
                 ->lockForUpdate()
@@ -150,6 +161,10 @@ class StockController extends Controller
                 'difference'      => $diff,
             ]);
         });
+
+        DashboardCache::forget((int) $tenantId);
+
+        return $response;
     }
 
     public function movements(Request $request): JsonResponse

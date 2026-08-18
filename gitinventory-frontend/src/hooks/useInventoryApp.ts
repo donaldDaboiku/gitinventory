@@ -73,6 +73,7 @@ export function useInventoryApp() {
   const [upgrading, setUpgrading] = useState(false)
   const [resendingVerification, setResendingVerification] = useState(false)
   const [importingProducts, setImportingProducts] = useState(false)
+  const [importingPurchases, setImportingPurchases] = useState(false)
   const [posMode, setPosMode] = useState(false)
   const [settingsTab, setSettingsTab] = useState<
     'profile' | 'inventory' | 'team' | 'plan' | 'help' | 'audit'
@@ -582,6 +583,56 @@ export function useInventoryApp() {
     }
   }
 
+  const downloadPurchaseImportTemplate = async () => {
+    try {
+      await downloadWithSession(
+        '/api/purchases/import/template',
+        'purchase-import-template.csv',
+        'text/csv',
+      )
+      notify('Template downloaded.')
+    } catch (error) {
+      notify(error instanceof Error ? error.message : 'Template download failed.')
+    }
+  }
+
+  const importPurchasesCsv = async (file: File) => {
+    if (!user) return
+    setImportingPurchases(true)
+    try {
+      const form = new FormData()
+      form.append('file', file)
+      const response = await fetch('/api/purchases/import', {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          Accept: 'application/json',
+          ...(await csrfHeaders()),
+        },
+        body: form,
+      })
+      const body = (await response.json()) as {
+        message?: string
+        imported?: number
+        failed?: number
+        errors?: Array<{ row: number; message: string }>
+      }
+      if (!response.ok) {
+        throw new Error(body.message || 'Import failed.')
+      }
+      const detail =
+        body.failed && body.errors?.length
+          ? ` First error (row ${body.errors[0].row}): ${body.errors[0].message}`
+          : ''
+      notify((body.message || 'Import complete.') + detail)
+      await loadPage('purchases')
+    } catch (error) {
+      notify(error instanceof Error ? error.message : 'Import failed.')
+    } finally {
+      setImportingPurchases(false)
+    }
+  }
+
   const fetchProductCodes = useCallback(
     () => api<{ sku: string; barcode: string }>('products/codes/preview'),
     [api],
@@ -941,6 +992,9 @@ export function useInventoryApp() {
     downloadProductImportTemplate,
     importProductsCsv,
     importingProducts,
+    downloadPurchaseImportTemplate,
+    importPurchasesCsv,
+    importingPurchases,
     fetchProductCodes,
     lookupProduct,
     saveSettings,

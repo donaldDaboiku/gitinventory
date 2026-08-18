@@ -7,13 +7,58 @@ use App\Models\Product;
 use App\Models\Purchase;
 use App\Models\PurchaseItem;
 use App\Models\StockMovement;
+use App\Services\DashboardCache;
+use App\Services\PurchaseImportService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class PurchaseController extends Controller
 {
+    public function __construct(private PurchaseImportService $importer) {}
+
+    public function importTemplate(): StreamedResponse
+    {
+        return response()->streamDownload(function () {
+            $out = fopen('php://output', 'w');
+            fputcsv($out, ['product_id', 'quantity', 'unit_cost', 'supplier']);
+            fputcsv($out, ['SKU-001', '10', '50.00', 'Acme Supplies']);
+            fclose($out);
+        }, 'purchase-import-template.csv', [
+            'Content-Type' => 'text/csv; charset=UTF-8',
+        ]);
+    }
+
+    public function import(Request $request): JsonResponse
+    {
+        $request->validate([
+            'file' => ['required', 'file', 'mimes:csv,txt', 'max:2048'],
+        ]);
+
+        $contents = file_get_contents($request->file('file')->getRealPath() ?: '');
+        if ($contents === false || trim($contents) === '') {
+            return response()->json(['message' => 'Could not read CSV file.'], 422);
+        }
+
+        try {
+            $result = $this->importer->import($request->user(), $contents);
+        } catch (\InvalidArgumentException $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
+
+        if ($result['imported'] > 0) {
+            DashboardCache::forget((int) $request->user()->tenant_id);
+        }
+
+        return response()->json([
+            'message'  => "Imported {$result['imported']} line(s). {$result['failed']} row(s) failed.",
+            'imported' => $result['imported'],
+            'failed'   => $result['failed'],
+            'errors'   => $result['errors'],
+        ], $result['imported'] > 0 ? 201 : 422);
+    }
     public function index(Request $request): JsonResponse
     {
         return response()->json(
@@ -45,7 +90,7 @@ class PurchaseController extends Controller
             'items.*.unit_cost'         => ['required', 'numeric', 'min:0'],
         ]);
 
-        return DB::transaction(function () use ($validated, $request) {
+        $response = DB::transaction(function () use ($validated, $request) {
             $tenantId   = $request->user()->tenant_id;
             $total      = 0;
             $amountPaid = $validated['amount_paid'] ?? 0;
@@ -107,6 +152,10 @@ class PurchaseController extends Controller
 
             return response()->json(['message' => 'Purchase recorded.', 'purchase' => $purchase->load('items.product')], 201);
         });
+
+        DashboardCache::forget((int) $tenantId);
+
+        return $response;
     }
 
     public function show(Request $request, Purchase $purchase): JsonResponse

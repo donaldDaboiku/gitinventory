@@ -184,6 +184,10 @@ function App() {
               loading={app.loading}
               onLoadMore={() => void app.loadPage('purchases', { append: true })}
               onOpen={(id) => void app.openTransactionDetail('purchases', id)}
+              canImport={app.can('purchases.create')}
+              importing={app.importingPurchases}
+              onDownloadImportTemplate={app.downloadPurchaseImportTemplate}
+              onImport={app.importPurchasesCsv}
             />
           )}
           {app.page === 'customers' && (

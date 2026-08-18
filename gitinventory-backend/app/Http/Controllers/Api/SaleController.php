@@ -7,6 +7,7 @@ use App\Models\Product;
 use App\Models\Sale;
 use App\Models\SaleItem;
 use App\Models\StockMovement;
+use App\Services\DashboardCache;
 use App\Services\InvoiceNumberService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\JsonResponse;
@@ -58,7 +59,7 @@ class SaleController extends Controller
             'items.*.discount'   => ['nullable', 'numeric', 'min:0'],
         ]);
 
-        return DB::transaction(function () use ($validated, $request, $tenant, $tenantId, $defaultTaxRate, $allowNegativeStock) {
+        $response = DB::transaction(function () use ($validated, $request, $tenant, $tenantId, $defaultTaxRate, $allowNegativeStock) {
             $subtotal = 0;
             $taxAmount = 0;
             $saleItems = [];
@@ -165,6 +166,12 @@ class SaleController extends Controller
                 'sale'    => $sale->load(['items.product', 'customer']),
             ], 201);
         });
+
+        if ($response->isSuccessful()) {
+            DashboardCache::forget((int) $tenantId);
+        }
+
+        return $response;
     }
 
     public function show(Request $request, Sale $sale): JsonResponse

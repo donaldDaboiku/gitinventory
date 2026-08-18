@@ -146,6 +146,8 @@ Route::middleware(['auth:sanctum', CheckEmailVerified::class, CheckSubscription:
     ]);
 
     // Purchases
+    Route::get('purchases/import/template', [PurchaseController::class, 'importTemplate'])->middleware('can:purchases.create');
+    Route::post('purchases/import', [PurchaseController::class, 'import'])->middleware('can:purchases.create');
     Route::apiResource('purchases', PurchaseController::class)->only(['index', 'store', 'show'])->middleware([
         'index' => 'can:purchases.view',
         'show'  => 'can:purchases.view',

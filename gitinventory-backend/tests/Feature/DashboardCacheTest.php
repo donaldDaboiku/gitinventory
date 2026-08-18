@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Http\Controllers\Api\DashboardController;
+use App\Models\Product;
 use App\Models\Tenant;
 use App\Models\User;
 use Database\Seeders\RolesAndPermissionsSeeder;
@@ -32,6 +33,56 @@ class DashboardCacheTest extends TestCase
             ->assertJsonStructure(['metrics', 'charts']);
 
         $this->assertTrue(Cache::has(DashboardController::cacheKey($user->tenant_id)));
+    }
+
+    public function test_stock_changes_invalidate_dashboard_cache(): void
+    {
+        $user = $this->owner();
+        $product = Product::create([
+            'tenant_id' => $user->tenant_id,
+            'name' => 'Stock cache test product',
+            'quantity' => 1,
+        ]);
+        $key = DashboardController::cacheKey($user->tenant_id);
+        Cache::put($key, ['cached' => true], 60);
+
+        Sanctum::actingAs($user);
+
+        $this->postJson('/api/stock/in', [
+            'product_id' => $product->id,
+            'quantity' => 1,
+        ])->assertOk();
+
+        $this->assertFalse(Cache::has($key));
+    }
+
+    public function test_sales_invalidate_dashboard_cache(): void
+    {
+        $user = $this->owner();
+        $product = Product::create([
+            'tenant_id' => $user->tenant_id,
+            'name' => 'Sale cache test product',
+            'quantity' => 2,
+            'cost_price' => 50,
+            'selling_price' => 100,
+        ]);
+        $key = DashboardController::cacheKey($user->tenant_id);
+        Cache::put($key, ['cached' => true], 60);
+
+        Sanctum::actingAs($user);
+
+        $this->postJson('/api/sales', [
+            'sale_date' => now()->toDateString(),
+            'payment_method' => 'cash',
+            'amount_paid' => 100,
+            'items' => [[
+                'product_id' => $product->id,
+                'quantity' => 1,
+                'unit_price' => 100,
+            ]],
+        ])->assertCreated();
+
+        $this->assertFalse(Cache::has($key));
     }
 
     private function owner(): User

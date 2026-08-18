@@ -211,13 +211,11 @@ Leave `PAYSTACK_SECRET_KEY` empty. Checkout returns `demo_mode: true`; frontend 
 
 ### Product / UX
 
-- Purchase CSV import / supplier price lists
 - Multi-branch stock transfer UI polish
 
 ### Engineering
 
-- Sanctum cookie SPA auth (httpOnly) if the web app is the only client
-- Event-based dashboard cache invalidation (today: 60s TTL)
+- Dashboard metrics remain cached for 60 seconds as a fallback; business mutations invalidate the current tenant's cache immediately.
 
 ### Operations
 

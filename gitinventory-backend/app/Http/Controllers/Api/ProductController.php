@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Product;
+use App\Services\DashboardCache;
 use App\Services\BarcodeImageService;
 use App\Services\ProductIdentifierService;
 use App\Services\ProductImportService;
@@ -52,6 +53,10 @@ class ProductController extends Controller
             $result = $this->importer->import($request->user(), $contents);
         } catch (\InvalidArgumentException $e) {
             return response()->json(['message' => $e->getMessage()], 422);
+        }
+
+        if ($result['imported'] > 0) {
+            DashboardCache::forget((int) $request->user()->tenant_id);
         }
 
         return response()->json([
@@ -170,6 +175,8 @@ class ProductController extends Controller
             ]);
         }
 
+        DashboardCache::forget($tenantId);
+
         return response()->json([
             'message' => 'Product created successfully.',
             'product' => $product->load(['category', 'branch']),
@@ -202,6 +209,7 @@ class ProductController extends Controller
         ]);
 
         $product->update($validated);
+        DashboardCache::forget($tenantId);
 
         return response()->json([
             'message' => 'Product updated successfully.',
@@ -211,7 +219,9 @@ class ProductController extends Controller
 
     public function destroy(Request $request, Product $product): JsonResponse
     {
+        $tenantId = (int) $product->tenant_id;
         $product->delete();
+        DashboardCache::forget($tenantId);
 
         return response()->json(['message' => 'Product deleted successfully.']);
     }

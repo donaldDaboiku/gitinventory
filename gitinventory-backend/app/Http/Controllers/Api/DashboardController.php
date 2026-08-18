@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Product;
 use App\Models\Sale;
+use App\Services\DashboardCache;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -14,14 +15,13 @@ class DashboardController extends Controller
 {
     public static function cacheKey(int $tenantId): string
     {
-        return 'dashboard:'.$tenantId.':'.now()->toDateString();
+        return DashboardCache::key($tenantId);
     }
 
     public function __invoke(Request $request): JsonResponse
     {
         $tenantId = (int) $request->user()->tenant_id;
 
-        // ponytail: 60s TTL, no event invalidation — bump TTL or forget cacheKey() after sales/stock if dashboards go stale
         $payload = Cache::remember(self::cacheKey($tenantId), 60, fn () => $this->metrics($tenantId));
 
         return response()->json($payload);
